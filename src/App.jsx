@@ -9,6 +9,10 @@ const points = [
   { id: 'p1', name: 'Júpiter', aliases: ['jupiter'], coords: [-47.45, -21.9878] },
   { id: 'p2', name: 'Prédios Brancos', aliases: ['predios brancos'], coords: [-47.4142, -21.9872] },
   { id: 'p3', name: 'Trevo', aliases: ['trevo'], coords: [-47.3975, -22.0106] },
+  { id: 'p4', name: '130', aliases: ['130'], coords: [-47.8558, -21.6653] },
+  { id: 'p5', name: '200', aliases: ['200'], coords: [-47.4297, -21.4375] },
+  { id: 'p6', name: '100', aliases: ['100'], coords: [-47.4297, -21.4375] },
+  { id: 'p7', name: '060', aliases: ['060'], coords: [-47.5856, -22.3278] },
   { id: 'p8', name: 'FAZ DA TOCA 2700', aliases: ['faz da toca 2700'], coords: [-47.7033, -22.2456] },
   { id: 'p9', name: 'Engenho', aliases: ['engenho'], coords: [-47.3653, -22.0378] },
   { id: 'p10', name: 'Analândia 2800', aliases: ['analandia 2800'], coords: [-47.7192, -22.1567] },
@@ -20,7 +24,7 @@ const points = [
   { id: 'p16', name: 'Faz da Barra 2300', aliases: ['faz da barra 2300'], coords: [-47.7758, -21.8814] },
   { id: 'p17', name: 'Usina Ipiranga 2500', aliases: ['usina ipiranga 2500'], coords: [-47.7339, -21.8336] },
   { id: 'p18', name: 'Faz Álamo 2400', aliases: ['faz alamo 2400'], coords: [-47.90083, -21.81528] },
-  { id: 'p19', name: 'Faz Pixoxó 2100', aliases: ['faz pixoxo 2100'], coords: [-47.88306, -21.78000] },
+  { id: 'p19', name: 'Faz Pixoxó 2100', aliases: ['faz pixoxo 2100'], coords: [-47.88306, -21.78] },
   { id: 'p20', name: 'Araraquara 2300', aliases: ['araraquara 2300'], coords: [-48.1333, -21.8111] },
   { id: 'p21', name: 'Área Vermelha 2100', aliases: ['area vermelha 2100'], coords: [-47.6575, -21.7253] },
   { id: 'p22', name: 'Santa Rita do Passa Quatro 2800', aliases: ['santa rita do passa quatro 2800'], coords: [-47.47, -21.6425] },
@@ -70,12 +74,20 @@ export default function App() {
   const [answer, setAnswer] = useState('');
   const [startTime, setStartTime] = useState(Date.now());
   const [elapsedTime, setElapsedTime] = useState(0);
+  const MAP_DECLINATION = 20;
   const [pitch, setPitch] = useState(60);
   const [bearing, setBearing] = useState(130);
   const [randomMode, setRandomMode] = useState(false);
   const [showKey, setShowKey] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
 
-  const normalize = (s) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  const normalize = (s) => {
+    try {
+      return String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    } catch (e) {
+      return String(s || '').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    }
+  };
 
   useEffect(() => {
     if (map.current) return;
@@ -86,7 +98,7 @@ export default function App() {
       center: [-47.524, -21.812],
       zoom: 16,
       pitch,
-      bearing,
+      bearing: bearing - MAP_DECLINATION,
     });
 
     map.current.on('load', () => {
@@ -98,7 +110,7 @@ export default function App() {
         el.style.backgroundColor = 'red';
         el.style.borderRadius = '50%';
         el.style.cursor = 'pointer';
-        el.style.boxShadow = '0 0 5px black';
+        el.style.boxShadow = '0 0 5px rgba(0,0,0,0.6)';
 
         el.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -115,10 +127,13 @@ export default function App() {
         labelEl.textContent = point.name;
         labelEl.style.color = 'white';
         labelEl.style.fontWeight = 'bold';
-        labelEl.style.textShadow = '0 0 5px black';
+        labelEl.style.textShadow = '0 0 5px rgba(0,0,0,0.8)';
         labelEl.style.whiteSpace = 'nowrap';
         labelEl.style.pointerEvents = 'none';
         labelEl.style.display = 'none';
+        labelEl.style.padding = '2px 6px';
+        labelEl.style.borderRadius = '4px';
+        labelEl.style.background = 'rgba(0,0,0,0.6)';
 
         const labelMarker = new maplibregl.Marker({ element: labelEl, anchor: 'bottom' })
           .setLngLat(point.coords)
@@ -128,8 +143,11 @@ export default function App() {
       });
 
       map.current.on('move', () => {
-        setPitch(Math.round(map.current.getPitch()));
-        setBearing(Math.round((map.current.getBearing()+360)%360));
+        if (!map.current) return;
+        const p = Math.round(map.current.getPitch());
+        const b = Math.round(((map.current.getBearing() + MAP_DECLINATION) + 360) % 360);
+        setPitch(p);
+        setBearing(b);
       });
     });
 
@@ -157,7 +175,7 @@ export default function App() {
         if (guessed.includes(id) || showKey) {
           labelEl.style.display = '';
           const zoom = map.current ? map.current.getZoom() : 10;
-          const fontSize = Math.max(10, zoom * 1.5 * 0.7);
+          const fontSize = Math.max(10, Math.round(zoom * 1.2));
           labelEl.style.fontSize = `${fontSize}px`;
           labelMarker.setLngLat(point.coords);
         } else {
@@ -170,22 +188,24 @@ export default function App() {
   const checkAnswer = () => {
     const normalized = normalize(answer);
     if (currentPoint && currentPoint.aliases.map(a => normalize(a)).includes(normalized)) {
-      const updatedGuessed = Array.from(new Set([...guessed, currentPoint.id]));
-      setGuessed(updatedGuessed);
+      const updated = Array.from(new Set([...guessed, currentPoint.id]));
+      setGuessed(updated);
       const rec = markersRef.current.get(currentPoint.id);
       if (rec && rec.labelEl) rec.labelEl.style.display = '';
       if (randomMode) {
-        const remaining = points.filter(p => !updatedGuessed.includes(p.id));
+        const remaining = points.filter(p => !updated.includes(p.id));
         const next = remaining.length ? remaining[Math.floor(Math.random() * remaining.length)] : null;
         if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
         else { setCurrentPoint(null); setAnswer(''); }
       } else { setCurrentPoint(null); setAnswer(''); }
-    } else alert('Errado!');
+    } else {
+      alert('Errado!');
+    }
   };
 
   useEffect(() => {
-    const interval = setInterval(() => setElapsedTime(Math.floor((Date.now() - startTime) / 1000)), 1000);
-    return () => clearInterval(interval);
+    const id = setInterval(() => setElapsedTime(Math.floor((Date.now() - startTime) / 1000)), 1000);
+    return () => clearInterval(id);
   }, [startTime]);
 
   const revealAll = (show) => {
@@ -199,7 +219,7 @@ export default function App() {
     setAnswer('');
     setStartTime(Date.now());
     setShowKey(false);
-    if (map.current) map.current.flyTo({ center: [-47.524, -21.812], zoom: 16, pitch, bearing });
+    if (map.current) map.current.flyTo({ center: [-47.524, -21.812], zoom: 16, pitch, bearing: bearing - MAP_DECLINATION });
     markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = 'none'; });
   };
 
@@ -208,7 +228,7 @@ export default function App() {
       markersRef.current.forEach((rec) => {
         if (rec.labelEl && rec.labelEl.style.display !== 'none' && map.current) {
           const zoom = map.current.getZoom();
-          const fontSize = Math.max(10, zoom * 1.5 * 0.7);
+          const fontSize = Math.max(10, Math.round(zoom * 1.2));
           rec.labelEl.style.fontSize = `${fontSize}px`;
         }
       });
@@ -218,67 +238,92 @@ export default function App() {
   }, []);
 
   const adjustPitch = (val) => { const p = Math.max(0, Math.min(85, Number(val))); setPitch(p); if (map.current) map.current.setPitch(p); };
-  const adjustBearing = (val) => { const b = (Number(val) + 360) % 360; setBearing(b); if (map.current) map.current.setBearing(b); };
+  const adjustBearing = (val) => { const b = (Number(val) + 360) % 360; setBearing(b);
+    if (map.current) map.current.setBearing(b - MAP_DECLINATION); };
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', fontFamily: 'Arial, sans-serif', color: '#333' }}>
-      <div ref={mapContainer} style={{ width: '100%', height: '90vh', position: 'relative' }} />
+    <div style={{ width: '100vw', height: '100vh', position: 'relative', fontFamily: 'Arial, sans-serif' }}>
 
-      <div style={{ position: 'absolute', top: 10, right: 10, background:'rgba(255,255,255,0.5)', padding:'6px', borderRadius:'6px', minWidth:'120px' }}>
-        <label style={{fontSize:'12px'}}>Pitch: {pitch}°</label>
-        <input type="range" min="0" max="85" value={pitch} onChange={(e) => adjustPitch(e.target.value)} style={{ width: '100%' }} />
-        <label style={{fontSize:'12px'}}>Proa: {bearing}°</label>
-        <input type="range" min="0" max="360" value={bearing} onChange={(e) => adjustBearing(e.target.value)} style={{ width: '100%' }} />
-      </div>
-
-      {currentPoint && (
-        <div style={{ position: 'absolute', top: 100, left: 10, background: 'white', padding: '10px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label>Qual é o nome da cidade?</label>
-          <input type="text" value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ccc' }} />
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={checkAnswer} style={{ padding:'6px', borderRadius:'4px', backgroundColor:'#4caf50', color:'white', border:'none' }}>Responder</button>    
+      {showIntro && (
+        <div style={{ position: 'absolute', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
+          <div style={{ background:'white', padding:'20px', borderRadius:'10px', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
+            <h3>INSTRUÇÕES:</h3>
+            <p>- Clique nas bolinhas em vermelho manualmente para responder o nome da respectiva posição;<br/>
+            - Ou clique em aleatório e deixe que o mapa vá para qualquer um dos pontos faltantes;<br/>
+            - Pode ativar ou desativar a opção aleatório a qualquer momento;<br/>
+            - Pode apertar ENTER para aceitar a resposta;<br/>
+            - Se o modo aleatório estiver ativo, ao acertar irá diretamente para outro ponto;<br/>
+            - Marque e desmarque a opção gabarito para conferências;<br/>
+            - A lista pode te levar direto para o ponto selecionado;<br/>
+            - Recomeçar reseta seu progresso.</p>
+            <p><i>"O Senhor é o meu pastor; de nada terei falta." - Salmos 23:1</i></p>
+            <div style={{ display:'flex', justifyContent:'flex-end' }}>
+              <button onClick={() => setShowIntro(false)} style={{ marginTop:10, padding:'8px 14px', border:'none', borderRadius:6, background:'#4caf50', color:'white' }}>Começar</button>
+            </div>
           </div>
         </div>
       )}
 
-      <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', background: 'white', padding: '10px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <label>
-          <input type="checkbox" checked={randomMode} onChange={(e) => {
-            const isChecked = e.target.checked;
-            setRandomMode(isChecked);
-            if (isChecked && !currentPoint) {
-              const remaining = points.filter(p => !guessed.includes(p.id));
-              const next = remaining.length ? remaining[Math.floor(Math.random() * remaining.length)] : null;
+      <div ref={mapContainer} style={{ width: '100%', height: '90vh' }} />
+
+      <div style={{ position: 'absolute', top: 10, right: 10, background:'rgba(255,255,255,0.45)', padding:6, borderRadius:6, minWidth:90, display:'flex', flexDirection:'column', gap:6, alignItems:'center' }}>
+        <div style={{ fontSize:11, opacity:0.8 }}>Pitch</div>
+        <input type="range" min="0" max="85" value={pitch} onChange={(e) => adjustPitch(e.target.value)} style={{ width:80 }} />
+        <div style={{ fontSize:11, opacity:0.8 }}>Proa</div>
+        <input type="range" min="0" max="360" value={bearing} onChange={(e) => adjustBearing(e.target.value)} style={{ width:80 }} />
+      </div>
+
+      <div style={{ position:'absolute', top:10, right:110, background:'rgba(255,255,255,0.6)', padding:6, borderRadius:6, textAlign:'center' }}>
+        <div style={{ width:28, height:28, border:'2px solid rgba(0,0,0,0.6)', borderRadius:'50%', margin:'auto', position:'relative' }}>
+          <div style={{ position:'absolute', top:4, left:'50%', width:2, height:18, background:'red', transform:`translateX(-50%) rotate(${bearing}deg)` }} />
+        </div>
+        <div style={{ fontSize:12 }}>{bearing}°</div>
+      </div>
+
+      {currentPoint && (
+        <div style={{ position: 'absolute', top: 100, left: 10, background: 'white', padding: 10, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label>Qual é o nome da cidade?</label>
+          <input type="text" value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} style={{ padding:6, borderRadius:4, border:'1px solid #ccc' }} />
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={checkAnswer} style={{ padding:6, borderRadius:4, backgroundColor:'#4caf50', color:'white', border:'none' }}>Responder</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', background: 'white', padding:10, borderRadius:8, display:'flex', alignItems:'center', gap:10 }}>
+        <label style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <input type="checkbox" checked={randomMode} onChange={(e)=>{
+            const checked = e.target.checked; setRandomMode(checked);
+            if (checked && !currentPoint) {
+              const remaining = points.filter(p=>!guessed.includes(p.id));
+              const next = remaining.length ? remaining[Math.floor(Math.random()*remaining.length)] : null;
               if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
             }
           }} /> Aleatório
         </label>
-        <button onClick={resetGame} style={{ padding: '6px 10px', borderRadius: '4px', border: 'none', backgroundColor: '#f44336', color: 'white' }}>Recomeçar</button>
+        <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', backgroundColor:'#f44336', color:'white' }}>Recomeçar</button>
       </div>
 
-      <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'white', padding: '8px', borderRadius: '8px' }}>
+      <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'white', padding:8, borderRadius:8 }}>
         Tempo: {elapsedTime}s<br />
         Acertos: {guessed.length} / {points.length}
       </div>
 
-      <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'white', padding: '10px', borderRadius: '8px', maxHeight: '30vh', overflowY: 'auto', minWidth: '220px' }}>
+      <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'white', padding:10, borderRadius:8, maxHeight:'30vh', overflowY:'auto', minWidth:220 }}>
         <strong>Total de pontos: {points.length}</strong>
-        <div style={{ marginTop: '8px' }}>
-          <label style={{ display: 'block', marginBottom: '6px' }}>Selecionar ponto:</label>
-          <select style={{ width: '100%', padding: '6px', borderRadius: '4px' }} onChange={(e)=>{
-            const pt = points.find(p=>p.id===e.target.value);
-            if(pt && map.current){ map.current.flyTo({center: pt.coords, zoom: 16}); }
-          }}>
+        <div style={{ marginTop:8 }}>
+          <label style={{ display:'block', marginBottom:6 }}>Selecionar ponto:</label>
+          <select style={{ width:'100%', padding:6, borderRadius:4 }} onChange={(e)=>{ const pt = points.find(p=>p.id===e.target.value); if (pt && map.current) map.current.flyTo({ center: pt.coords, zoom: 16 }); }}>
             <option value="">-- Selecionar --</option>
             <optgroup label="Acertados">
-              {guessed.map(id=>{ const c=points.find(p=>p.id===id); return <option key={id} value={id}>{c?.name ?? id}</option>; })}
+              {guessed.map(id=>{ const c = points.find(p=>p.id===id); return <option key={id} value={id}>{c?.name ?? id}</option>; })}
             </optgroup>
             <optgroup label="Faltantes">
               {points.filter(p=>!guessed.includes(p.id)).map(p=> <option key={p.id} value={p.id}>{p.name}</option>)}
             </optgroup>
           </select>
 
-          <label style={{ display:'flex', alignItems:'center', gap:'6px', marginTop:'10px' }}>
+          <label style={{ display:'flex', alignItems:'center', gap:6, marginTop:10 }}>
             <input type="checkbox" checked={showKey} onChange={(e)=> revealAll(e.target.checked)} /> Mostrar Gabarito
           </label>
         </div>
