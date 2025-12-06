@@ -278,7 +278,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ width: '100vw', height: '100vh', position: 'relative', fontFamily: 'Arial, sans-serif', color: '#333' }}>
       {/* Map container */}
       <div ref={mapContainer} style={{ width: '100%', height: '90vh', position: 'relative' }} />
 
