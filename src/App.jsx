@@ -1,23 +1,14 @@
-// Map Quiz App with optimized markers and live MapLibre preview
 import React, { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-// --- Put your MapTiler key here (user provided)
 const MAPTILER_KEY = "YHlTRP429Wo5PZXGJklr";
 const MAP_STYLE = `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`;
 
-// ==============================
-// POINTS (complete list)
-// ==============================
 const points = [
   { id: 'p1', name: 'Júpiter', aliases: ['jupiter'], coords: [-47.45, -21.9878] },
   { id: 'p2', name: 'Prédios Brancos', aliases: ['predios brancos'], coords: [-47.4142, -21.9872] },
   { id: 'p3', name: 'Trevo', aliases: ['trevo'], coords: [-47.3975, -22.0106] },
-  { id: 'p4', name: '130', aliases: ['130'], coords: [-47.8558, -21.6653] },
-  { id: 'p5', name: '200', aliases: ['200'], coords: [-47.4297, -21.4375] },
-  { id: 'p6', name: '100', aliases: ['100'], coords: [-47.4297, -21.4375] },
-  { id: 'p7', name: '060', aliases: ['060'], coords: [-47.5856, -22.3278] },
   { id: 'p8', name: 'FAZ DA TOCA 2700', aliases: ['faz da toca 2700'], coords: [-47.7033, -22.2456] },
   { id: 'p9', name: 'Engenho', aliases: ['engenho'], coords: [-47.3653, -22.0378] },
   { id: 'p10', name: 'Analândia 2800', aliases: ['analandia 2800'], coords: [-47.7192, -22.1567] },
@@ -72,7 +63,7 @@ const points = [
 export default function App() {
   const mapContainer = useRef(null);
   const map = useRef(null);
-  const markersRef = useRef(new Map()); // id -> { marker, labelEl }
+  const markersRef = useRef(new Map());
 
   const [guessed, setGuessed] = useState([]);
   const [currentPoint, setCurrentPoint] = useState(null);
@@ -84,25 +75,8 @@ export default function App() {
   const [randomMode, setRandomMode] = useState(false);
   const [showKey, setShowKey] = useState(false);
 
-  // create or update marker element styles
-  const updateMarkerStyle = (pointId) => {
-    const rec = markersRef.current.get(pointId);
-    if (!rec) return;
-    const { el } = rec;
-    if (!el) return;
-    if (guessed.includes(pointId)) {
-      el.style.backgroundColor = 'green';
-    } else if (currentPoint && currentPoint.id === pointId) {
-      el.style.backgroundColor = 'yellow';
-    } else if (showKey) {
-      // when showing key, highlight all markers lightly
-      el.style.backgroundColor = 'orange';
-    } else {
-      el.style.backgroundColor = 'red';
-    }
-  };
+  const normalize = (s) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
-  // initialize map
   useEffect(() => {
     if (map.current) return;
 
@@ -116,7 +90,6 @@ export default function App() {
     });
 
     map.current.on('load', () => {
-      // create markers once
       points.forEach(point => {
         const el = document.createElement('div');
         el.className = 'marker';
@@ -137,7 +110,6 @@ export default function App() {
           .setLngLat(point.coords)
           .addTo(map.current);
 
-        // label element (for guessed markers)
         const labelEl = document.createElement('div');
         labelEl.className = 'label';
         labelEl.textContent = point.name;
@@ -155,26 +127,13 @@ export default function App() {
         markersRef.current.set(point.id, { marker, el, labelMarker, labelEl, point });
       });
 
-      // if showKey was toggled before load, apply it
-      if (showKey) {
-        markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = ''; });
-      }
-
-      // fly to initial point if randomMode
-      if (randomMode && !currentPoint) {
-        const remaining = points.filter(p => !guessed.includes(p.id));
-        const next = remaining.length ? remaining[Math.floor(Math.random() * remaining.length)] : null;
-        if (next) {
-          setCurrentPoint(next);
-          setAnswer('');
-          map.current.flyTo({ center: next.coords });
-        }
-      }
-
+      map.current.on('move', () => {
+        setPitch(Math.round(map.current.getPitch()));
+        setBearing(Math.round((map.current.getBearing()+360)%360));
+      });
     });
 
     return () => {
-      // cleanup map and markers
       markersRef.current.forEach(({ marker, labelMarker }) => {
         try { marker.remove(); } catch (e) {}
         try { labelMarker.remove(); } catch (e) {}
@@ -185,27 +144,65 @@ export default function App() {
     };
   }, []);
 
-  // update marker visuals when guessed/currentPoint/showKey change or zoom
   useEffect(() => {
     markersRef.current.forEach((rec, id) => {
-      updateMarkerStyle(id);
-      // show/hide label for guessed or when gabarito (showKey) is active
-      if (rec.labelEl) {
+      const { el, labelEl, labelMarker, point } = rec;
+      if (!el) return;
+      if (guessed.includes(id)) el.style.backgroundColor = 'green';
+      else if (currentPoint && currentPoint.id === id) el.style.backgroundColor = 'yellow';
+      else if (showKey) el.style.backgroundColor = 'orange';
+      else el.style.backgroundColor = 'red';
+
+      if (labelEl) {
         if (guessed.includes(id) || showKey) {
-          rec.labelEl.style.display = '';
-          // adjust font size based on zoom
+          labelEl.style.display = '';
           const zoom = map.current ? map.current.getZoom() : 10;
           const fontSize = Math.max(10, zoom * 1.5 * 0.7);
-          rec.labelEl.style.fontSize = `${fontSize}px`;
-          rec.labelMarker.setLngLat(rec.point.coords);
+          labelEl.style.fontSize = `${fontSize}px`;
+          labelMarker.setLngLat(point.coords);
         } else {
-          rec.labelEl.style.display = 'none';
+          labelEl.style.display = 'none';
         }
       }
     });
   }, [guessed, currentPoint, showKey]);
 
-  // throttle zoomend label resizing
+  const checkAnswer = () => {
+    const normalized = normalize(answer);
+    if (currentPoint && currentPoint.aliases.map(a => normalize(a)).includes(normalized)) {
+      const updatedGuessed = Array.from(new Set([...guessed, currentPoint.id]));
+      setGuessed(updatedGuessed);
+      const rec = markersRef.current.get(currentPoint.id);
+      if (rec && rec.labelEl) rec.labelEl.style.display = '';
+      if (randomMode) {
+        const remaining = points.filter(p => !updatedGuessed.includes(p.id));
+        const next = remaining.length ? remaining[Math.floor(Math.random() * remaining.length)] : null;
+        if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
+        else { setCurrentPoint(null); setAnswer(''); }
+      } else { setCurrentPoint(null); setAnswer(''); }
+    } else alert('Errado!');
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => setElapsedTime(Math.floor((Date.now() - startTime) / 1000)), 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  const revealAll = (show) => {
+    setShowKey(show);
+    markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = show ? '' : 'none'; });
+  };
+
+  const resetGame = () => {
+    setGuessed([]);
+    setCurrentPoint(null);
+    setAnswer('');
+    setStartTime(Date.now());
+    setShowKey(false);
+    if (map.current) map.current.flyTo({ center: [-47.524, -21.812], zoom: 16, pitch, bearing });
+    markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = 'none'; });
+  };
+
   useEffect(() => {
     const handler = () => {
       markersRef.current.forEach((rec) => {
@@ -220,89 +217,30 @@ export default function App() {
     return () => { if (map.current) map.current?.off('zoomend', handler); };
   }, []);
 
-  const adjustPitch = (delta) => {
-    const newPitch = Math.max(0, Math.min(85, pitch + delta));
-    setPitch(newPitch);
-    if (map.current) map.current.setPitch(newPitch);
-  };
-
-  const adjustBearing = (delta) => {
-    const newBearing = (bearing + delta + 360) % 360;
-    setBearing(newBearing);
-    if (map.current) map.current.setBearing(newBearing);
-  };
-
-  const normalize = (s) => s.normalize('NFD').replace(/[^a-zA-Z0-9]/g,'').toLowerCase();
-
-  const checkAnswer = () => {
-    const normalized = normalize(answer);
-    if (currentPoint && currentPoint.aliases.map(a => normalize(a)).includes(normalized)) {
-      const updatedGuessed = Array.from(new Set([...guessed, currentPoint.id]));
-      setGuessed(updatedGuessed);
-      const rec = markersRef.current.get(currentPoint.id);
-      if (rec && rec.labelEl) rec.labelEl.style.display = '';
-      if (randomMode) {
-        const remaining = points.filter(p => !updatedGuessed.includes(p.id));
-        const next = remaining.length ? remaining[Math.floor(Math.random() * remaining.length)] : null;
-        if (next) {
-          setCurrentPoint(next);
-          setAnswer('');
-          if (map.current) map.current.flyTo({ center: next.coords });
-        } else { setCurrentPoint(null); setAnswer(''); }
-      } else { setCurrentPoint(null); setAnswer(''); }
-    } else alert('Errado!');
-  };
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [startTime]);
-
-  // helper: show gabarito
-  const revealAll = () => {
-    setShowKey(true);
-    markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = ''; });
-  };
-
-  // helper: reset game
-  const resetGame = () => {
-    setGuessed([]);
-    setCurrentPoint(null);
-    setAnswer('');
-    setStartTime(Date.now());
-    setShowKey(false);
-    if (map.current) map.current.flyTo({ center: [-47.524, -21.812], zoom: 16, pitch, bearing });
-    markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = 'none'; });
-  };
+  const adjustPitch = (val) => { const p = Math.max(0, Math.min(85, Number(val))); setPitch(p); if (map.current) map.current.setPitch(p); };
+  const adjustBearing = (val) => { const b = (Number(val) + 360) % 360; setBearing(b); if (map.current) map.current.setBearing(b); };
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', fontFamily: 'Arial, sans-serif', color: '#333' }}>
-      {/* Map container */}
       <div ref={mapContainer} style={{ width: '100%', height: '90vh', position: 'relative' }} />
 
-      {/* Top-right controls: pitch & bearing */}
-      <div style={{ position: 'absolute', top: 10, right: 10, background: 'white', padding: '10px', borderRadius: '8px', minWidth: '180px' }}>
-        <label>Pitch: {pitch}°</label>
-        <input type="range" min="0" max="85" value={pitch} onChange={(e) => adjustPitch(Number(e.target.value) - pitch)} style={{ width: '100%' }} />
-        <label>Azimute: {bearing}°</label>
-        <input type="range" min="0" max="360" value={bearing} onChange={(e) => adjustBearing(Number(e.target.value) - bearing)} style={{ width: '100%' }} />
+      <div style={{ position: 'absolute', top: 10, right: 10, background:'rgba(255,255,255,0.5)', padding:'6px', borderRadius:'6px', minWidth:'120px' }}>
+        <label style={{fontSize:'12px'}}>Pitch: {pitch}°</label>
+        <input type="range" min="0" max="85" value={pitch} onChange={(e) => adjustPitch(e.target.value)} style={{ width: '100%' }} />
+        <label style={{fontSize:'12px'}}>Proa: {bearing}°</label>
+        <input type="range" min="0" max="360" value={bearing} onChange={(e) => adjustBearing(e.target.value)} style={{ width: '100%' }} />
       </div>
 
-      {/* Current point answer box */}
       {currentPoint && (
         <div style={{ position: 'absolute', top: 100, left: 10, background: 'white', padding: '10px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label>Qual é o nome da cidade?</label>
           <input type="text" value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ccc' }} />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={checkAnswer} style={{ padding:'6px', borderRadius:'4px', backgroundColor:'#4caf50', color:'white', border:'none' }}>Responder</button>
-            
+            <button onClick={checkAnswer} style={{ padding:'6px', borderRadius:'4px', backgroundColor:'#4caf50', color:'white', border:'none' }}>Responder</button>    
           </div>
         </div>
       )}
 
-      {/* Top-center controls: random toggle + restart */}
       <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', background: 'white', padding: '10px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <label>
           <input type="checkbox" checked={randomMode} onChange={(e) => {
@@ -311,24 +249,18 @@ export default function App() {
             if (isChecked && !currentPoint) {
               const remaining = points.filter(p => !guessed.includes(p.id));
               const next = remaining.length ? remaining[Math.floor(Math.random() * remaining.length)] : null;
-              if (next) {
-                setCurrentPoint(next);
-                setAnswer('');
-                if (map.current) map.current.flyTo({ center: next.coords });
-              }
+              if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
             }
           }} /> Aleatório
         </label>
         <button onClick={resetGame} style={{ padding: '6px 10px', borderRadius: '4px', border: 'none', backgroundColor: '#f44336', color: 'white' }}>Recomeçar</button>
       </div>
 
-      {/* Bottom-left: time and score */}
       <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'white', padding: '8px', borderRadius: '8px' }}>
         Tempo: {elapsedTime}s<br />
         Acertos: {guessed.length} / {points.length}
       </div>
 
-      {/* Bottom-right: total, dropdown (acertados -> faltantes), gabarito button */}
       <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'white', padding: '10px', borderRadius: '8px', maxHeight: '30vh', overflowY: 'auto', minWidth: '220px' }}>
         <strong>Total de pontos: {points.length}</strong>
         <div style={{ marginTop: '8px' }}>
@@ -336,7 +268,7 @@ export default function App() {
           <select style={{ width: '100%', padding: '6px', borderRadius: '4px' }} onChange={(e)=>{
             const pt = points.find(p=>p.id===e.target.value);
             if(pt && map.current){ map.current.flyTo({center: pt.coords, zoom: 16}); }
-          }} value="">
+          }}>
             <option value="">-- Selecionar --</option>
             <optgroup label="Acertados">
               {guessed.map(id=>{ const c=points.find(p=>p.id===id); return <option key={id} value={id}>{c?.name ?? id}</option>; })}
@@ -346,9 +278,12 @@ export default function App() {
             </optgroup>
           </select>
 
-          <button onClick={revealAll} style={{ marginTop:'10px', padding:'6px', borderRadius:'4px', backgroundColor:'#2196f3', color:'white', border:'none', width:'100%' }}>Gabarito</button>
+          <label style={{ display:'flex', alignItems:'center', gap:'6px', marginTop:'10px' }}>
+            <input type="checkbox" checked={showKey} onChange={(e)=> revealAll(e.target.checked)} /> Mostrar Gabarito
+          </label>
         </div>
       </div>
+
     </div>
   );
 }
