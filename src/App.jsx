@@ -163,9 +163,9 @@ export default function App() {
             el.style.display = 'flex';
             el.style.alignItems = 'center';
             el.style.justifyContent = 'center';
+            el.style.flexShrink = '0'; // Impede o container de encolher
             
             // Container clicável e visual (Hitbox)
-            // IMPORTANTE: Este é o elemento que muda de tamanho e contém o pulso e a bolinha
             const content = document.createElement('div');
             content.className = 'marker-content';
             content.style.width = '40px'; 
@@ -176,7 +176,8 @@ export default function App() {
             content.style.alignItems = 'center';
             content.style.justifyContent = 'center';
             content.style.position = 'relative';
-            content.style.transition = 'width 0.3s, height 0.3s'; // Transição suave para mudança de tamanho
+            content.style.flexShrink = '0'; // Impede distorção oval
+            content.style.transition = 'width 0.3s, height 0.3s';
 
             // Elemento de Dica (Pulse)
             const hint = document.createElement('div');
@@ -210,7 +211,14 @@ export default function App() {
               setAnswer('');
             });
 
-            const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+            // CORREÇÃO CRÍTICA: pitchAlignment e rotationAlignment 'viewport'
+            // Isso força o marcador a ficar sempre "em pé" e circular na tela
+            const marker = new maplibregl.Marker({ 
+                element: el, 
+                anchor: 'center',
+                pitchAlignment: 'viewport', 
+                rotationAlignment: 'viewport'
+            })
               .setLngLat(point.coords)
               .addTo(map.current);
 
@@ -228,11 +236,15 @@ export default function App() {
             labelEl.style.borderRadius = '4px';
             labelEl.style.background = 'rgba(0,0,0,0.6)';
 
-            const labelMarker = new maplibregl.Marker({ element: labelEl, anchor: 'bottom' })
+            const labelMarker = new maplibregl.Marker({ 
+                element: labelEl, 
+                anchor: 'bottom',
+                pitchAlignment: 'viewport',
+                rotationAlignment: 'viewport'
+            })
               .setLngLat(point.coords)
               .addTo(map.current);
 
-            // Guardamos "content" também agora
             markersRef.current.set(point.id, { marker, content, dot, hint, labelMarker, labelEl, point });
           });
 
@@ -285,14 +297,14 @@ export default function App() {
           content.style.width = '80px';
           content.style.height = '80px';
           
-          // Se não foi adivinhado, esconde a bolinha (TODOS os não respondidos somem)
-          if (!isGuessed) {
-              dot.style.opacity = '0';
-          } else {
+          // Se foi acertado, mostra (verde). Se não, ESCONDE TUDO.
+          if (isGuessed) {
               dot.style.opacity = '1';
+          } else {
+              dot.style.opacity = '0';
           }
       } else {
-          // Tamanho normal (40px de hitbox, bolinha visivel)
+          // Tamanho normal (40px de hitbox, bolinha visível)
           content.style.width = '40px';
           content.style.height = '40px';
           dot.style.opacity = '1';
@@ -301,12 +313,10 @@ export default function App() {
       // --- Lógica Dica ---
       if (hint) {
           if (isCurrent && hintTrigger > 0) {
-              // Dispara animação removendo e readicionando a classe para reiniciar
               hint.classList.remove('animate-pulse-hint');
-              void hint.offsetWidth; // Força reflow
+              void hint.offsetWidth; 
               hint.classList.add('animate-pulse-hint');
           } else {
-              // Remove a classe se mudou de ponto
               hint.classList.remove('animate-pulse-hint');
           }
       }
