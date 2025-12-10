@@ -4,14 +4,13 @@ import maplibregl from "maplibre-gl";
 const MAPTILER_KEY = "YHlTRP429Wo5PZXGJklr";
 const MAP_STYLE = `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`;
 
+// Lista de pontos atualizada (removidos: 060, 200, 100, 130, Rua com Prédios Brancos)
+// Adicionados: Corumbataí, Luís Antônio, São Simão, Sumidouro, Estrada SO/SGT
 const points = [
   { id: 'p1', name: 'Júpiter', aliases: ['jupiter'], coords: [-47.45, -21.9878] },
   { id: 'p2', name: 'Prédios Brancos', aliases: ['predios brancos'], coords: [-47.4142, -21.9872] },
   { id: 'p3', name: 'Trevo', aliases: ['trevo'], coords: [-47.3975, -22.0106] },
-  { id: 'p4', name: '130', aliases: ['130'], coords: [-47.8558, -21.6653] },
-  { id: 'p5', name: '200', aliases: ['200'], coords: [-47.4297, -21.4375] },
-  { id: 'p6', name: '100', aliases: ['100'], coords: [-47.4297, -21.4375] },
-  { id: 'p7', name: '060', aliases: ['060'], coords: [-47.5856, -22.3278] },
+  // Removidos: p4(130), p5(200), p6(100), p7(060)
   { id: 'p8', name: 'FAZ DA TOCA 2700', aliases: ['faz da toca 2700'], coords: [-47.7033, -22.2456] },
   { id: 'p9', name: 'Engenho', aliases: ['engenho'], coords: [-47.3653, -22.0378] },
   { id: 'p10', name: 'Analândia 2800', aliases: ['analandia 2800'], coords: [-47.7192, -22.1567] },
@@ -52,7 +51,7 @@ const points = [
   { id: 'p45', name: 'Morro da Antena', aliases: ['morro da antena'], coords: [-47.4836, -22.0042] },
   { id: 'p46', name: 'Ponta W Vila SGT', aliases: ['ponta w vila sgt'], coords: [-47.3697, -21.9906] },
   { id: 'p47', name: 'Ponte Velha', aliases: ['ponte velha'], coords: [-47.3683, -21.9261] },
-  { id: 'p48', name: 'Rua com Prédios Brancos', aliases: ['rua com predios brancos'], coords: [-47.3656, -22.0358] },
+  // Removido: p48 (Rua com Prédios Brancos)
   { id: 'p49', name: 'Lagoa na SP-225', aliases: ['lagoa na sp-225'], coords: [-48.0144, -22.2878] },
   { id: 'p50', name: 'Fazenda Brotas', aliases: ['fazenda brotas'], coords: [-48.0544, -22.235] },
   { id: 'p51', name: 'Rincão', aliases: ['rincao'], coords: [-48.0722, -21.5878] },
@@ -60,21 +59,31 @@ const points = [
   { id: 'p53', name: 'Santa Cruz da Esperança', aliases: ['santa cruz da esperanca'], coords: [-47.4283, -21.292] },
   { id: 'p54', name: 'Fazenda da Serra', aliases: ['fazenda da serra'], coords: [-47.2111, -21.3578] },
   { id: 'p55', name: 'Américo Brasiliense', aliases: ['americo brasiliense'], coords: [-48.1222, -21.7408] },
-  { id: 'p56', name: 'Guatapará', aliases: ['guatapara'], coords: [-48.0367, -21.4956] }
+  { id: 'p56', name: 'Guatapará', aliases: ['guatapara'], coords: [-48.0367, -21.4956] },
+  
+  // Novos Pontos
+  { id: 'p57', name: 'Corumbataí', aliases: ['corumbatai'], coords: [-47.6228, -22.2214] },
+  { id: 'p58', name: 'Luís Antônio', aliases: ['luis antonio'], coords: [-47.7008, -21.5519] },
+  { id: 'p59', name: 'São Simão', aliases: ['sao simao'], coords: [-47.5556, -21.4794] },
+  { id: 'p60', name: 'Sumidouro', aliases: ['sumidouro'], coords: [-47.3467, -21.9636] },
+  { id: 'p61', name: 'Estrada SO/SGT', aliases: ['estrada so sgt'], coords: [-47.3447, -22.0067] },
 ];
 
 const AREAS = {
   Capricornio: [
-    'Trevo Aguaí Anhanguera','Leme','Leme 2000','Araras','Araras 2200','Cordeirópolis','Rio Claro 2000','Rio Claro','Ipeúna','Lagoa na SP-225','Itirapina','FAZ DA TOCA 2700','Analândia'
+    'Trevo Aguaí Anhanguera','Leme','Leme 2000','Araras','Araras 2200','Cordeirópolis','Rio Claro 2000','Rio Claro','Ipeúna','Lagoa na SP-225','Itirapina','FAZ DA TOCA 2700','Analândia','Corumbataí'
   ],
   Aquarius: [
     'Trevo Aguaí Anhanguera','Analândia','Analândia 2800','Itirapina','Itirapina 2600','Lagoa na SP-225','Fazenda Brotas','Américo Brasiliense','São Carlos 2600','Descalvado','Porto Ferreira'
   ],
-  Pisces: [
-    'Porto Ferreira','Descalvado','Usina Ipiranga 2500','Faz da Barra 2300','Faz Álamo 2400','Faz Pixoxo 2100','Américo Brasiliense','Rincão','Usina sta rita 2100','Pedágio São Simão'
+  Peixes: [ // Renomeado de Pisces
+    'Porto Ferreira','Descalvado','Usina Ipiranga 2500','Faz da Barra 2300','Faz Álamo 2400','Faz Pixoxo 2100','Américo Brasiliense','Rincão','Usina sta rita 2100','Pedágio São Simão','Luís Antônio'
   ],
   Taurus: [
-    'Porto Ferreira','Pedágio São Simão','Santa Rita do Passa Quatro 2800','Santa Rita do Passa Quatro','Santa Cruz da Esperança','Fazenda da Serra','Mococa'
+    'Porto Ferreira','Pedágio São Simão','Santa Rita do Passa Quatro 2800','Santa Rita do Passa Quatro','Santa Cruz da Esperança','Fazenda da Serra','Mococa','São Simão'
+  ],
+  'Tráfego AFA': [ // Nova Área
+    'Sumidouro','Estrada SO/SGT','Ponte Velha','Prédios Brancos','Júpiter','Morro da Antena','Trevo','Trevo Aguaí Anhanguera','Lagoa do Aeroclube','Engenho','Ponta W Vila SGT'
   ]
 };
 
@@ -95,7 +104,6 @@ export default function App() {
   const [showKey, setShowKey] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
 
-  // Novos estados
   const [blindMode, setBlindMode] = useState(false);
   const [hintTrigger, setHintTrigger] = useState(0);
 
@@ -107,7 +115,6 @@ export default function App() {
   const [areaPointIndex, setAreaPointIndex] = useState(0);
   const [areaQueue, setAreaQueue] = useState([]);
 
-  // Inject CSS for MapLibre
   useEffect(() => {
     const link = document.createElement("link");
     link.href = "https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css";
@@ -155,10 +162,8 @@ export default function App() {
 
         map.current.on('load', () => {
           points.forEach(point => {
-            // Container principal do marcador (âncora)
             const el = document.createElement('div');
             el.className = 'marker-root';
-            // Ajuste crucial para evitar problemas de layout
             el.style.width = '0px'; 
             el.style.height = '0px';
             el.style.display = 'flex';
@@ -166,7 +171,6 @@ export default function App() {
             el.style.justifyContent = 'center';
             el.style.flexShrink = '0'; 
             
-            // Hitbox container
             const content = document.createElement('div');
             content.className = 'marker-content';
             content.style.width = '40px'; 
@@ -180,7 +184,6 @@ export default function App() {
             content.style.flexShrink = '0';
             content.style.transition = 'width 0.3s, height 0.3s';
 
-            // Elemento de Dica (Pulse)
             const hint = document.createElement('div');
             hint.className = 'hint-pulse';
             hint.style.position = 'absolute';
@@ -192,7 +195,6 @@ export default function App() {
             hint.style.opacity = '0';
             hint.style.pointerEvents = 'none';
 
-            // Bolinha Visível
             const dot = document.createElement('div');
             dot.className = 'marker-dot';
             dot.style.width = '12px';
@@ -212,7 +214,6 @@ export default function App() {
               setAnswer('');
             });
 
-            // pitchAlignment: 'viewport' e rotationAlignment: 'viewport' garantem círculo perfeito
             const marker = new maplibregl.Marker({ 
                 element: el, 
                 anchor: 'center',
@@ -222,7 +223,6 @@ export default function App() {
               .setLngLat(point.coords)
               .addTo(map.current);
 
-            // Label
             const labelEl = document.createElement('div');
             labelEl.className = 'label';
             labelEl.textContent = point.name;
@@ -290,11 +290,9 @@ export default function App() {
 
       dot.style.backgroundColor = color;
 
-      // --- Lógica Blind Mode ---
       if (blindMode) {
           content.style.width = '80px';
           content.style.height = '80px';
-          // Se não foi adivinhado, esconde. Se foi, mostra.
           dot.style.opacity = isGuessed ? '1' : '0';
       } else {
           content.style.width = '40px';
@@ -302,7 +300,6 @@ export default function App() {
           dot.style.opacity = '1';
       }
 
-      // --- Lógica Dica ---
       if (hint) {
           if (isCurrent && hintTrigger > 0) {
               hint.classList.remove('animate-pulse-hint');
@@ -447,7 +444,6 @@ export default function App() {
   const stopAreaMode = () => { setAreaMode(false); setAreaQueue([]); setAreaPointIndex(0); };
   const stopRandomMode = () => { setRandomMode(false); };
 
-  // --- Lógica para o Dropdown ---
   const sortedPoints = [...points].sort((a, b) => a.name.localeCompare(b.name));
   
   // 1. Aleatório (ou Padrão)
@@ -455,7 +451,6 @@ export default function App() {
   const answeredPoints = sortedPoints.filter(p => guessed.includes(p.id));
 
   // 2. Modo Áreas
-  // Descobre quais pontos pertencem a pelo menos uma área
   const pointsInAnyArea = new Set();
   Object.values(AREAS).forEach(names => {
       names.forEach(name => {
@@ -464,14 +459,11 @@ export default function App() {
       });
   });
 
-  // Lista de pontos que NÃO estão em nenhuma área
   const otherPointsList = sortedPoints.filter(p => !pointsInAnyArea.has(p.id));
 
   return (
-    // FIX: Position Fixed para travar a tela
     <div style={{ position: 'fixed', inset: 0, fontFamily: 'Arial, sans-serif', color: '#333', overflow: 'hidden' }}>
       
-      {/* CSS da Animação de Dica */}
       <style>{`
         @keyframes pulseHint {
           0% { transform: scale(0.5); opacity: 0; }
@@ -481,7 +473,6 @@ export default function App() {
         .animate-pulse-hint {
           animation: pulseHint 1s ease-out;
         }
-        /* Esconde barra de rolagem mas permite rolar */
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
@@ -536,7 +527,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Barra Inferior Responsiva (Scroll Horizontal) */}
       <div className="scrollbar-hide" style={{ 
           position:'absolute', 
           bottom:0, 
@@ -556,7 +546,6 @@ export default function App() {
           boxSizing: 'border-box'
       }}>
         
-        {/* Seletor Aleatório */}
         <div 
           onClick={() => { if(randomMode) stopRandomMode(); else startRandomMode(); }} 
           style={{ 
@@ -571,7 +560,6 @@ export default function App() {
           <b>Aleatório</b>
         </div>
 
-        {/* Seletor Áreas */}
         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink: 0 }}>
             <div 
               onClick={() => { if(areaMode) stopAreaMode(); else startAreaMode(); }}
@@ -598,13 +586,11 @@ export default function App() {
             </select>
         </div>
 
-        {/* Checkbox Às Cegas */}
         <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, cursor:'pointer', borderLeft: '1px solid #ddd', paddingLeft: 10, flexShrink: 0 }}>
             <input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} />
             <b>Às Cegas</b>
         </label>
 
-        {/* Botão Dica - Só aparece se estiver "Às Cegas" */}
         <button
             onClick={triggerHint}
             style={{
@@ -635,9 +621,7 @@ export default function App() {
           >
             <option value="">-- Ir para ponto --</option>
             
-            {/* LÓGICA DE EXIBIÇÃO BASEADA NO MODO */}
             {!areaMode ? (
-              // MODO ALEATÓRIO/PADRÃO: Faltantes vs Respondidos
               <>
                 {missingPoints.length > 0 && (
                     <optgroup label="Faltantes">
@@ -649,21 +633,18 @@ export default function App() {
                 {answeredPoints.length > 0 && (
                     <optgroup label="Respondidos">
                         {answeredPoints.map(pt => (
-                            <option key={pt.id} value={pt.id}>{pt.name} (OK)</option>
+                            <option key={pt.id} value={pt.id}>{pt.name} ✅</option>
                         ))}
                     </optgroup>
                 )}
               </>
             ) : (
-              // MODO ÁREAS: Agrupar por Área + Demais Pontos
               <>
                 {Object.entries(AREAS).map(([areaName, areaPointsNames]) => {
                     const areaPointsIds = areaPointsNames.map(n => nameToPointId(n)).filter(Boolean);
-                    // Separar acertados e faltantes dentro da área
                     const areaMissing = areaPointsIds.filter(id => !guessed.includes(id));
                     const areaGuessed = areaPointsIds.filter(id => guessed.includes(id));
                     
-                    // Ordenar alfabeticamente para ficar bonito
                     areaMissing.sort((a,b) => { 
                         const pa = points.find(p=>p.id===a); const pb = points.find(p=>p.id===b);
                         return pa.name.localeCompare(pb.name);
@@ -681,20 +662,19 @@ export default function App() {
                             })}
                             {areaGuessed.map(id => {
                                 const pt = points.find(p => p.id === id);
-                                return <option key={id} value={id}>{pt.name} (OK)</option>;
+                                return <option key={id} value={id}>{pt.name} ✅</option>;
                             })}
                         </optgroup>
                     );
                 })}
 
-                {/* GRUPO: DEMAIS PONTOS */}
                 {otherPointsList.length > 0 && (
                     <optgroup label="DEMAIS PONTOS">
                         {otherPointsList.filter(p => !guessed.includes(p.id)).map(pt => (
                             <option key={pt.id} value={pt.id}>{pt.name}</option>
                         ))}
                         {otherPointsList.filter(p => guessed.includes(p.id)).map(pt => (
-                            <option key={pt.id} value={pt.id}>{pt.name} (OK)</option>
+                            <option key={pt.id} value={pt.id}>{pt.name} ✅</option>
                         ))}
                     </optgroup>
                 )}
