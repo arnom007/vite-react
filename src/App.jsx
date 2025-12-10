@@ -331,7 +331,8 @@ export default function App() {
         </div>
       )}
 
-      <div ref={mapContainer} style={{ width: '100%', height: '82vh' }} />
+      {/* Alterado height de 82vh para 100vh para remover a barra cinza */}
+      <div ref={mapContainer} style={{ width: '100%', height: '100vh' }} />
 
       <div style={{ position: 'absolute', top: 10, right: 10, background:'rgba(255,255,255,0.45)', padding:6, borderRadius:6, minWidth:90, display:'flex', flexDirection:'column', gap:6, alignItems:'center' }}>
         <div style={{ fontSize:11, opacity:0.8 }}>Pitch</div>
@@ -357,7 +358,8 @@ export default function App() {
         </div>
       )}
 
-      <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'white', padding:'6px 10px', display:'flex', alignItems:'center', gap:10, boxShadow:'0 -2px 6px rgba(0,0,0,0.15)', fontSize:14 }}>
+      {/* Adicionado zIndex para garantir que a barra fique sobre o mapa */}
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'white', padding:'6px 10px', display:'flex', alignItems:'center', gap:10, boxShadow:'0 -2px 6px rgba(0,0,0,0.15)', fontSize:14, zIndex: 10 }}>
         <label style={{ display:'flex', alignItems:'center', gap:4 }}>
           <input type="checkbox" checked={randomMode} onChange={(e)=>{ const checked=e.target.checked; setRandomMode(checked); if(checked){ setAreaMode(false); stopAreaMode(); } if(checked && !currentPoint){ const rem=points.filter(p=>!guessed.includes(p.id)); const next=rem.length? rem[Math.floor(Math.random()*rem.length)] : null; if(next){ setCurrentPoint(next); setAnswer(''); if(map.current) map.current.flyTo({ center: next.coords }); } } }} /> Aleatório
         </label>
@@ -372,7 +374,6 @@ export default function App() {
 
         <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white' }}>Recomeçar</button>
 
-        {/* Replaced &nbsp; with {" "} to avoid object/syntax error */}
         <div style={{ marginLeft:'auto' }}>Tempo: {elapsedTime}s {" "} {guessed.length}/{points.length}</div>
 
         <div style={{ minWidth:180 }}>
