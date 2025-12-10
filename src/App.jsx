@@ -156,7 +156,6 @@ export default function App() {
         map.current.on('load', () => {
           points.forEach(point => {
             // Container principal do marcador (âncora)
-            // IMPORTANTE: Não aplicar position fixed/absolute aqui para não quebrar a lib
             const el = document.createElement('div');
             el.className = 'marker-root';
             el.style.width = '0px'; 
@@ -166,6 +165,7 @@ export default function App() {
             el.style.justifyContent = 'center';
             
             // Container clicável e visual (Hitbox)
+            // IMPORTANTE: Este é o elemento que muda de tamanho e contém o pulso e a bolinha
             const content = document.createElement('div');
             content.className = 'marker-content';
             content.style.width = '40px'; 
@@ -176,6 +176,7 @@ export default function App() {
             content.style.alignItems = 'center';
             content.style.justifyContent = 'center';
             content.style.position = 'relative';
+            content.style.transition = 'width 0.3s, height 0.3s'; // Transição suave para mudança de tamanho
 
             // Elemento de Dica (Pulse)
             const hint = document.createElement('div');
@@ -231,7 +232,8 @@ export default function App() {
               .setLngLat(point.coords)
               .addTo(map.current);
 
-            markersRef.current.set(point.id, { marker, dot, hint, labelMarker, labelEl, point });
+            // Guardamos "content" também agora
+            markersRef.current.set(point.id, { marker, content, dot, hint, labelMarker, labelEl, point });
           });
 
           map.current.on('move', () => {
@@ -261,11 +263,11 @@ export default function App() {
     };
   }, []);
 
-  // Lógica de Atualização Visual (Blind Mode, Dica, Cores)
+  // Lógica de Atualização Visual (Blind Mode, Dica, Cores, Tamanho Hitbox)
   useEffect(() => {
     markersRef.current.forEach((rec, id) => {
-      const { dot, hint, labelEl, labelMarker, point } = rec;
-      if (!dot) return;
+      const { content, dot, hint, labelEl, labelMarker, point } = rec;
+      if (!dot || !content) return;
 
       let color = 'red';
       let isGuessed = guessed.includes(id);
@@ -278,10 +280,21 @@ export default function App() {
       dot.style.backgroundColor = color;
 
       // --- Lógica Blind Mode ---
-      // Se estiver no modo cego, for o ponto atual e ainda não foi acertado: esconde a bolinha
-      if (blindMode && isCurrent && !isGuessed) {
-          dot.style.opacity = '0';
+      if (blindMode) {
+          // Aumenta Hitbox para 80px (tamanho do pulso expandido)
+          content.style.width = '80px';
+          content.style.height = '80px';
+          
+          // Se não foi adivinhado, esconde a bolinha (TODOS os não respondidos somem)
+          if (!isGuessed) {
+              dot.style.opacity = '0';
+          } else {
+              dot.style.opacity = '1';
+          }
       } else {
+          // Tamanho normal (40px de hitbox, bolinha visivel)
+          content.style.width = '40px';
+          content.style.height = '40px';
           dot.style.opacity = '1';
       }
 
