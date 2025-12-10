@@ -96,6 +96,7 @@ export default function App() {
   const [showIntro, setShowIntro] = useState(true);
 
   const [areaMode, setAreaMode] = useState(false);
+  const [randomAreaSequence, setRandomAreaSequence] = useState(false); // Nova opção
   const [selectedArea, setSelectedArea] = useState('Capricornio');
   const areaList = Object.keys(AREAS);
   const [areaIndex, setAreaIndex] = useState(0);
@@ -249,34 +250,62 @@ export default function App() {
       if (rec && rec.labelEl) rec.labelEl.style.display = '';
 
       if (areaMode && areaQueue.length) {
-        const nextIndex = areaPointIndex + 1;
-        if (nextIndex < areaQueue.length) {
-          setAreaPointIndex(nextIndex);
-          const nextId = areaQueue[nextIndex];
-          const nextPoint = points.find(p => p.id === nextId);
-          setCurrentPoint(nextPoint || null);
-          setAnswer('');
-          if (map.current && nextPoint) map.current.flyTo({ center: nextPoint.coords });
+        // Lógica de Area
+        let nextPoint = null;
+
+        if (randomAreaSequence) {
+            // Se estiver em modo aleatório dentro da área
+            const remainingInArea = areaQueue.filter(id => !updated.includes(id));
+            if (remainingInArea.length > 0) {
+                const randId = remainingInArea[Math.floor(Math.random() * remainingInArea.length)];
+                nextPoint = points.find(p => p.id === randId);
+            }
         } else {
-          const nextAreaIdx = (areaIndex + 1) % areaList.length;
-          setAreaIndex(nextAreaIdx);
-          const nextAreaName = areaList[nextAreaIdx];
-          setSelectedArea(nextAreaName);
-          const nextNames = AREAS[nextAreaName] || [];
-          const nextIds = nextNames.map(n => nameToPointId(n)).filter(Boolean);
-          const prevIds = areaQueue || [];
-          const overlap = prevIds.filter(id => nextIds.includes(id));
-          if (overlap.length) {
-            setGuessed(g => g.filter(id => !overlap.includes(id)));
-          }
-          setAreaQueue(nextIds);
-          setAreaPointIndex(0);
-          const firstId = nextIds[0];
-          const firstPoint = points.find(p => p.id === firstId);
-          setCurrentPoint(firstPoint || null);
-          setAnswer('');
-          if (map.current && firstPoint) map.current.flyTo({ center: firstPoint.coords });
+            // Sequencial padrão
+            const nextIndex = areaPointIndex + 1;
+            if (nextIndex < areaQueue.length) {
+                setAreaPointIndex(nextIndex);
+                nextPoint = points.find(p => p.id === areaQueue[nextIndex]);
+            }
         }
+
+        if (nextPoint) {
+             setCurrentPoint(nextPoint);
+             setAnswer('');
+             if (map.current) map.current.flyTo({ center: nextPoint.coords });
+        } else {
+             // Área acabou, ir para próxima
+             const nextAreaIdx = (areaIndex + 1) % areaList.length;
+             setAreaIndex(nextAreaIdx);
+             const nextAreaName = areaList[nextAreaIdx];
+             setSelectedArea(nextAreaName);
+
+             // Calcular próxima fila manualmente para já setar o ponto
+             const nextNames = AREAS[nextAreaName] || [];
+             const nextIds = nextNames.map(n => nameToPointId(n)).filter(Boolean);
+             setAreaQueue(nextIds);
+             setAreaPointIndex(0);
+
+             // Pegar o primeiro ponto da próxima área (ou aleatório da próxima área)
+             const availableNext = nextIds.filter(id => !updated.includes(id)); // Evitar repetidos globais se houver overlap
+             
+             if (availableNext.length > 0) {
+                 let firstId;
+                 if (randomAreaSequence) {
+                     firstId = availableNext[Math.floor(Math.random() * availableNext.length)];
+                 } else {
+                     firstId = availableNext[0];
+                 }
+                 const firstPoint = points.find(p => p.id === firstId);
+                 setCurrentPoint(firstPoint || null);
+                 setAnswer('');
+                 if (map.current && firstPoint) map.current.flyTo({ center: firstPoint.coords });
+             } else {
+                 alert('Todas as áreas finalizadas!');
+                 setCurrentPoint(null);
+             }
+        }
+
       } else if (randomMode) {
         const remaining = points.filter(p => !updated.includes(p.id));
         const next = remaining.length ? remaining[Math.floor(Math.random() * remaining.length)] : null;
@@ -298,15 +327,51 @@ export default function App() {
 
   const startAreaMode = () => {
     setAreaMode(true);
+    setRandomMode(false); // Desativa modo aleatório global
     const names = AREAS[selectedArea] || [];
     const ids = names.map(n => nameToPointId(n)).filter(Boolean);
     setAreaQueue(ids);
     setAreaIndex(areaList.indexOf(selectedArea));
     setAreaPointIndex(0);
-    if (ids.length) { const p = points.find(pt => pt.id === ids[0]); setCurrentPoint(p || null); if (map.current && p) map.current.flyTo({ center: p.coords }); }
+    // Iniciar primeiro ponto
+    if (ids.length) { 
+        let startP;
+        if (randomAreaSequence) {
+             const un = ids.filter(id => !guessed.includes(id));
+             if (un.length > 0) startP = points.find(pt => pt.id === un[Math.floor(Math.random() * un.length)]);
+        } else {
+             startP = points.find(pt => pt.id === ids[0]); 
+        }
+        
+        if (startP) {
+            setCurrentPoint(startP); 
+            if (map.current) map.current.flyTo({ center: startP.coords }); 
+        }
+    }
+  };
+
+  const startRandomMode = () => {
+    setRandomMode(true);
+    setAreaMode(false);
+    // Lógica para iniciar ponto aleatório imediato se não houver um
+    if (!currentPoint) {
+        const rem = points.filter(p => !guessed.includes(p.id));
+        const next = rem.length ? rem[Math.floor(Math.random() * rem.length)] : null;
+        if (next) {
+            setCurrentPoint(next);
+            setAnswer('');
+            if (map.current) map.current.flyTo({ center: next.coords });
+        }
+    }
   };
 
   const stopAreaMode = () => { setAreaMode(false); setAreaQueue([]); setAreaPointIndex(0); };
+  const stopRandomMode = () => { setRandomMode(false); };
+
+  // Separar pontos para o dropdown
+  const sortedPoints = [...points].sort((a, b) => a.name.localeCompare(b.name));
+  const missingPoints = sortedPoints.filter(p => !guessed.includes(p.id));
+  const answeredPoints = sortedPoints.filter(p => guessed.includes(p.id));
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', fontFamily: 'Arial, sans-serif', color: '#333' }}>
@@ -360,30 +425,74 @@ export default function App() {
 
       {/* Adicionado zIndex para garantir que a barra fique sobre o mapa */}
       <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'white', padding:'6px 10px', display:'flex', alignItems:'center', gap:10, boxShadow:'0 -2px 6px rgba(0,0,0,0.15)', fontSize:14, zIndex: 10 }}>
-        <label style={{ display:'flex', alignItems:'center', gap:4 }}>
-          <input type="checkbox" checked={randomMode} onChange={(e)=>{ const checked=e.target.checked; setRandomMode(checked); if(checked){ setAreaMode(false); stopAreaMode(); } if(checked && !currentPoint){ const rem=points.filter(p=>!guessed.includes(p.id)); const next=rem.length? rem[Math.floor(Math.random()*rem.length)] : null; if(next){ setCurrentPoint(next); setAnswer(''); if(map.current) map.current.flyTo({ center: next.coords }); } } }} /> Aleatório
-        </label>
+        
+        {/* Seletor Estilo Botão: Aleatório */}
+        <div 
+          onClick={() => { if(randomMode) stopRandomMode(); else startRandomMode(); }} 
+          style={{ 
+            display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '4px 8px', 
+            border: randomMode ? '2px solid #4caf50' : '1px solid #ccc',
+            borderRadius: '6px',
+            backgroundColor: randomMode ? '#e8f5e9' : 'transparent',
+            transition: 'all 0.2s'
+          }}
+        >
+          <b>Aleatório</b>
+        </div>
 
-        <label style={{ display:'flex', alignItems:'center', gap:4 }}>
-          <input type="checkbox" checked={areaMode} onChange={(e)=>{ const checked=e.target.checked; if(checked){ setRandomMode(false); startAreaMode(); } else stopAreaMode(); }} /> Áreas
-        </label>
+        {/* Seletor Estilo Botão: Áreas */}
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div 
+              onClick={() => { if(areaMode) stopAreaMode(); else startAreaMode(); }}
+              style={{
+                display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '4px 8px',
+                border: areaMode ? '2px solid #4caf50' : '1px solid #ccc',
+                borderRadius: '6px',
+                backgroundColor: areaMode ? '#e8f5e9' : 'transparent',
+                transition: 'all 0.2s'
+              }}
+            >
+              <b>Áreas</b>
+            </div>
 
-        <select value={selectedArea} onChange={(e)=> setSelectedArea(e.target.value)} style={{ padding:'4px 6px', borderRadius:4 }}>
-          {areaList.map(a => <option key={a} value={a}>{a}</option>)}
-        </select>
+            {/* Checkbox "Aleatório na Área" (Só aparece se Áreas estiver ativo) */}
+            {areaMode && (
+                <label style={{ display:'flex', alignItems:'center', gap:4, fontSize: 12, cursor:'pointer' }} title="Sequência aleatória dentro da área atual">
+                    <input type="checkbox" checked={randomAreaSequence} onChange={(e) => setRandomAreaSequence(e.target.checked)} />
+                    Seq. Aleatória
+                </label>
+            )}
 
-        <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white' }}>Recomeçar</button>
+            <select value={selectedArea} onChange={(e)=> setSelectedArea(e.target.value)} style={{ padding:'4px 6px', borderRadius:4 }}>
+              {areaList.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+        </div>
+
+        <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 10 }}>Recomeçar</button>
 
         <div style={{ marginLeft:'auto' }}>Tempo: {elapsedTime}s {" "} {guessed.length}/{points.length}</div>
 
         <div style={{ minWidth:180 }}>
-          <select style={{ width:'100%', padding:4, borderRadius:4 }} onChange={(e)=>{ const pt=points.find(p=>p.id===e.target.value); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }}>
-            <option value="">-- Selecionar ponto --</option>
-            {Object.entries(AREAS).map(([area, list]) => (
-              <optgroup key={area} label={area}>
-                {list.map(name => { const pt = points.find(p=>p.name===name); return pt ? <option key={pt.id} value={pt.id}>{pt.name}</option> : null; })}
-              </optgroup>
-            ))}
+          <select 
+            style={{ width:'100%', padding:4, borderRadius:4 }} 
+            onChange={(e)=>{ const pt=points.find(p=>p.id===e.target.value); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }}
+            value=""
+          >
+            <option value="">-- Ir para ponto --</option>
+            {missingPoints.length > 0 && (
+                <optgroup label="Faltantes">
+                    {missingPoints.map(pt => (
+                        <option key={pt.id} value={pt.id}>{pt.name}</option>
+                    ))}
+                </optgroup>
+            )}
+            {answeredPoints.length > 0 && (
+                <optgroup label="Respondidos">
+                    {answeredPoints.map(pt => (
+                        <option key={pt.id} value={pt.id}>{pt.name} (OK)</option>
+                    ))}
+                </optgroup>
+            )}
           </select>
         </div>
 
