@@ -155,6 +155,7 @@ export default function App() {
 
         map.current.on('load', () => {
           points.forEach(point => {
+            // Container principal do marcador (âncora)
             const el = document.createElement('div');
             el.className = 'marker-root';
             // Ajuste crucial para evitar problemas de layout
@@ -510,11 +511,11 @@ export default function App() {
       </div>
 
       {currentPoint && (
-        <div style={{ position: 'absolute', top: '15%', left: '50%', transform: 'translateX(-50%)', background: 'white', padding: 10, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.2)', width: '90%', maxWidth: '300px' }}>
-          <label style={{ fontWeight: 'bold', fontSize: 14 }}>Nome do ponto</label>
-          <input type="text" value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} style={{ padding:8, borderRadius:4, border:'1px solid #ccc', width: '100%', boxSizing: 'border-box' }} autoFocus />
+        <div style={{ position: 'absolute', top: '80px', left: '16px', background: 'white', padding: '8px', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', width: 'auto', maxWidth: '220px' }}>
+          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Nome do ponto</label>
+          <input type="text" value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} style={{ padding:'6px', borderRadius:4, border:'1px solid #ccc', width: '100%', boxSizing: 'border-box' }} autoFocus />
           <div style={{ display:'flex', gap:8 }}>
-            <button onClick={checkAnswer} style={{ padding:'8px 16px', borderRadius:4, backgroundColor:'#4caf50', color:'white', border:'none', width: '100%' }}>Responder</button>
+            <button onClick={checkAnswer} style={{ padding:'6px 12px', borderRadius:4, backgroundColor:'#4caf50', color:'white', border:'none', width: '100%', cursor:'pointer' }}>Responder</button>
           </div>
         </div>
       )}
