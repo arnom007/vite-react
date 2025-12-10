@@ -95,8 +95,12 @@ export default function App() {
   const [showKey, setShowKey] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
 
+  // Novos estados
+  const [blindMode, setBlindMode] = useState(false);
+  const [hintTrigger, setHintTrigger] = useState(0);
+
   const [areaMode, setAreaMode] = useState(false);
-  const [randomAreaSequence, setRandomAreaSequence] = useState(false); // Nova opção
+  const [randomAreaSequence, setRandomAreaSequence] = useState(false);
   const [selectedArea, setSelectedArea] = useState('Capricornio');
   const areaList = Object.keys(AREAS);
   const [areaIndex, setAreaIndex] = useState(0);
@@ -135,7 +139,6 @@ export default function App() {
   useEffect(() => {
     if (map.current) return;
 
-    // Fetch style manually to avoid SecurityError with window.location.href in sandboxed iframes
     const initMap = async () => {
       try {
         const response = await fetch(MAP_STYLE);
@@ -152,16 +155,55 @@ export default function App() {
 
         map.current.on('load', () => {
           points.forEach(point => {
+            // Container principal do marcador (âncora)
+            // IMPORTANTE: Não aplicar position fixed/absolute aqui para não quebrar a lib
             const el = document.createElement('div');
-            el.className = 'marker';
-            el.style.width = '12px';
-            el.style.height = '12px';
-            el.style.backgroundColor = 'red';
-            el.style.borderRadius = '50%';
-            el.style.cursor = 'pointer';
-            el.style.boxShadow = '0 0 5px rgba(0,0,0,0.6)';
+            el.className = 'marker-root';
+            el.style.width = '0px'; 
+            el.style.height = '0px';
+            el.style.display = 'flex';
+            el.style.alignItems = 'center';
+            el.style.justifyContent = 'center';
+            
+            // Container clicável e visual (Hitbox)
+            const content = document.createElement('div');
+            content.className = 'marker-content';
+            content.style.width = '40px'; 
+            content.style.height = '40px';
+            content.style.borderRadius = '50%';
+            content.style.cursor = 'pointer';
+            content.style.display = 'flex';
+            content.style.alignItems = 'center';
+            content.style.justifyContent = 'center';
+            content.style.position = 'relative';
 
-            el.addEventListener('click', (e) => {
+            // Elemento de Dica (Pulse)
+            const hint = document.createElement('div');
+            hint.className = 'hint-pulse';
+            hint.style.position = 'absolute';
+            hint.style.width = '100%';
+            hint.style.height = '100%';
+            hint.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+            hint.style.borderRadius = '50%';
+            hint.style.transform = 'scale(0.5)';
+            hint.style.opacity = '0';
+            hint.style.pointerEvents = 'none';
+
+            // Bolinha Visível
+            const dot = document.createElement('div');
+            dot.className = 'marker-dot';
+            dot.style.width = '12px';
+            dot.style.height = '12px';
+            dot.style.backgroundColor = 'red';
+            dot.style.borderRadius = '50%';
+            dot.style.boxShadow = '0 0 5px rgba(0,0,0,0.6)';
+            dot.style.transition = 'opacity 0.2s ease';
+            
+            content.appendChild(hint);
+            content.appendChild(dot);
+            el.appendChild(content);
+
+            content.addEventListener('click', (e) => {
               e.stopPropagation();
               setCurrentPoint(point);
               setAnswer('');
@@ -171,6 +213,7 @@ export default function App() {
               .setLngLat(point.coords)
               .addTo(map.current);
 
+            // Label (Nome do ponto)
             const labelEl = document.createElement('div');
             labelEl.className = 'label';
             labelEl.textContent = point.name;
@@ -188,7 +231,7 @@ export default function App() {
               .setLngLat(point.coords)
               .addTo(map.current);
 
-            markersRef.current.set(point.id, { marker, el, labelMarker, labelEl, point });
+            markersRef.current.set(point.id, { marker, dot, hint, labelMarker, labelEl, point });
           });
 
           map.current.on('move', () => {
@@ -218,14 +261,42 @@ export default function App() {
     };
   }, []);
 
+  // Lógica de Atualização Visual (Blind Mode, Dica, Cores)
   useEffect(() => {
     markersRef.current.forEach((rec, id) => {
-      const { el, labelEl, labelMarker, point } = rec;
-      if (!el) return;
-      if (guessed.includes(id)) el.style.backgroundColor = 'green';
-      else if (currentPoint && currentPoint.id === id) el.style.backgroundColor = 'yellow';
-      else if (showKey) el.style.backgroundColor = 'orange';
-      else el.style.backgroundColor = 'red';
+      const { dot, hint, labelEl, labelMarker, point } = rec;
+      if (!dot) return;
+
+      let color = 'red';
+      let isGuessed = guessed.includes(id);
+      let isCurrent = currentPoint && currentPoint.id === id;
+
+      if (isGuessed) color = 'green';
+      else if (isCurrent) color = 'yellow';
+      else if (showKey) color = 'orange';
+
+      dot.style.backgroundColor = color;
+
+      // --- Lógica Blind Mode ---
+      // Se estiver no modo cego, for o ponto atual e ainda não foi acertado: esconde a bolinha
+      if (blindMode && isCurrent && !isGuessed) {
+          dot.style.opacity = '0';
+      } else {
+          dot.style.opacity = '1';
+      }
+
+      // --- Lógica Dica ---
+      if (hint) {
+          if (isCurrent && hintTrigger > 0) {
+              // Dispara animação removendo e readicionando a classe para reiniciar
+              hint.classList.remove('animate-pulse-hint');
+              void hint.offsetWidth; // Força reflow
+              hint.classList.add('animate-pulse-hint');
+          } else {
+              // Remove a classe se mudou de ponto
+              hint.classList.remove('animate-pulse-hint');
+          }
+      }
 
       if (labelEl) {
         if (guessed.includes(id) || showKey) {
@@ -239,7 +310,11 @@ export default function App() {
         }
       }
     });
-  }, [guessed, currentPoint, showKey]);
+  }, [guessed, currentPoint, showKey, blindMode, hintTrigger]);
+
+  const triggerHint = () => {
+      setHintTrigger(prev => prev + 1);
+  };
 
   const checkAnswer = () => {
     const normalized = normalize(answer);
@@ -250,18 +325,14 @@ export default function App() {
       if (rec && rec.labelEl) rec.labelEl.style.display = '';
 
       if (areaMode && areaQueue.length) {
-        // Lógica de Area
         let nextPoint = null;
-
         if (randomAreaSequence) {
-            // Se estiver em modo aleatório dentro da área
             const remainingInArea = areaQueue.filter(id => !updated.includes(id));
             if (remainingInArea.length > 0) {
                 const randId = remainingInArea[Math.floor(Math.random() * remainingInArea.length)];
                 nextPoint = points.find(p => p.id === randId);
             }
         } else {
-            // Sequencial padrão
             const nextIndex = areaPointIndex + 1;
             if (nextIndex < areaQueue.length) {
                 setAreaPointIndex(nextIndex);
@@ -274,21 +345,17 @@ export default function App() {
              setAnswer('');
              if (map.current) map.current.flyTo({ center: nextPoint.coords });
         } else {
-             // Área acabou, ir para próxima
              const nextAreaIdx = (areaIndex + 1) % areaList.length;
              setAreaIndex(nextAreaIdx);
              const nextAreaName = areaList[nextAreaIdx];
              setSelectedArea(nextAreaName);
 
-             // Calcular próxima fila manualmente para já setar o ponto
              const nextNames = AREAS[nextAreaName] || [];
              const nextIds = nextNames.map(n => nameToPointId(n)).filter(Boolean);
              setAreaQueue(nextIds);
              setAreaPointIndex(0);
 
-             // Pegar o primeiro ponto da próxima área (ou aleatório da próxima área)
-             const availableNext = nextIds.filter(id => !updated.includes(id)); // Evitar repetidos globais se houver overlap
-             
+             const availableNext = nextIds.filter(id => !updated.includes(id));
              if (availableNext.length > 0) {
                  let firstId;
                  if (randomAreaSequence) {
@@ -327,13 +394,12 @@ export default function App() {
 
   const startAreaMode = () => {
     setAreaMode(true);
-    setRandomMode(false); // Desativa modo aleatório global
+    setRandomMode(false);
     const names = AREAS[selectedArea] || [];
     const ids = names.map(n => nameToPointId(n)).filter(Boolean);
     setAreaQueue(ids);
     setAreaIndex(areaList.indexOf(selectedArea));
     setAreaPointIndex(0);
-    // Iniciar primeiro ponto
     if (ids.length) { 
         let startP;
         if (randomAreaSequence) {
@@ -342,7 +408,6 @@ export default function App() {
         } else {
              startP = points.find(pt => pt.id === ids[0]); 
         }
-        
         if (startP) {
             setCurrentPoint(startP); 
             if (map.current) map.current.flyTo({ center: startP.coords }); 
@@ -353,7 +418,6 @@ export default function App() {
   const startRandomMode = () => {
     setRandomMode(true);
     setAreaMode(false);
-    // Lógica para iniciar ponto aleatório imediato se não houver um
     if (!currentPoint) {
         const rem = points.filter(p => !guessed.includes(p.id));
         const next = rem.length ? rem[Math.floor(Math.random() * rem.length)] : null;
@@ -368,13 +432,24 @@ export default function App() {
   const stopAreaMode = () => { setAreaMode(false); setAreaQueue([]); setAreaPointIndex(0); };
   const stopRandomMode = () => { setRandomMode(false); };
 
-  // Separar pontos para o dropdown
   const sortedPoints = [...points].sort((a, b) => a.name.localeCompare(b.name));
   const missingPoints = sortedPoints.filter(p => !guessed.includes(p.id));
   const answeredPoints = sortedPoints.filter(p => guessed.includes(p.id));
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', fontFamily: 'Arial, sans-serif', color: '#333' }}>
+      
+      {/* CSS da Animação de Dica */}
+      <style>{`
+        @keyframes pulseHint {
+          0% { transform: scale(0.5); opacity: 0; }
+          20% { opacity: 0.8; }
+          100% { transform: scale(2.0); opacity: 0; }
+        }
+        .animate-pulse-hint {
+          animation: pulseHint 1s ease-out;
+        }
+      `}</style>
 
       {showIntro && (
         <div style={{ position: 'absolute', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
@@ -384,7 +459,6 @@ export default function App() {
             - Ou clique em aleatório e deixe que o mapa vá para qualquer um dos pontos faltantes;<br/>
             - Pode ativar ou desativar a opção aleatório a qualquer momento;<br/>
             - Pode apertar ENTER para aceitar a resposta;<br/>
-            - Se o modo aleatório estiver ativo, ao acertar irá diretamente para outro ponto;<br/>
             - Marque e desmarque a opção gabarito para conferências;<br/>
             - A lista pode te levar direto para o ponto selecionado;<br/>
             - Recomeçar reseta seu progresso.</p>
@@ -396,7 +470,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Alterado height de 82vh para 100vh para remover a barra cinza */}
       <div ref={mapContainer} style={{ width: '100%', height: '100vh' }} />
 
       <div style={{ position: 'absolute', top: 10, right: 10, background:'rgba(255,255,255,0.45)', padding:6, borderRadius:6, minWidth:90, display:'flex', flexDirection:'column', gap:6, alignItems:'center' }}>
@@ -423,10 +496,10 @@ export default function App() {
         </div>
       )}
 
-      {/* Adicionado zIndex para garantir que a barra fique sobre o mapa */}
+      {/* Barra Inferior com zIndex alto para ficar sobre o mapa */}
       <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'white', padding:'6px 10px', display:'flex', alignItems:'center', gap:10, boxShadow:'0 -2px 6px rgba(0,0,0,0.15)', fontSize:14, zIndex: 10 }}>
         
-        {/* Seletor Estilo Botão: Aleatório */}
+        {/* Seletor Aleatório */}
         <div 
           onClick={() => { if(randomMode) stopRandomMode(); else startRandomMode(); }} 
           style={{ 
@@ -440,7 +513,7 @@ export default function App() {
           <b>Aleatório</b>
         </div>
 
-        {/* Seletor Estilo Botão: Áreas */}
+        {/* Seletor Áreas */}
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <div 
               onClick={() => { if(areaMode) stopAreaMode(); else startAreaMode(); }}
@@ -455,7 +528,6 @@ export default function App() {
               <b>Áreas</b>
             </div>
 
-            {/* Checkbox "Aleatório na Área" (Só aparece se Áreas estiver ativo) */}
             {areaMode && (
                 <label style={{ display:'flex', alignItems:'center', gap:4, fontSize: 12, cursor:'pointer' }} title="Sequência aleatória dentro da área atual">
                     <input type="checkbox" checked={randomAreaSequence} onChange={(e) => setRandomAreaSequence(e.target.checked)} />
@@ -468,11 +540,35 @@ export default function App() {
             </select>
         </div>
 
-        <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 10 }}>Recomeçar</button>
+        {/* Checkbox Às Cegas */}
+        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, cursor:'pointer', borderLeft: '1px solid #ddd', paddingLeft: 10 }}>
+            <input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} />
+            <b>Às Cegas</b>
+        </label>
 
-        <div style={{ marginLeft:'auto' }}>Tempo: {elapsedTime}s {" "} {guessed.length}/{points.length}</div>
+        {/* Botão Dica - Só aparece se estiver "Às Cegas" */}
+        <button
+            onClick={triggerHint}
+            style={{
+                opacity: blindMode ? 1 : 0,
+                pointerEvents: blindMode ? 'auto' : 'none',
+                transition: 'opacity 0.3s ease',
+                padding: '4px 10px',
+                borderRadius: 4,
+                border: '1px solid #2196f3',
+                backgroundColor: '#e3f2fd',
+                color: '#1976d2',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: 12
+            }}
+        >
+            Dica
+        </button>
 
-        <div style={{ minWidth:180 }}>
+        <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto' }}>Recomeçar</button>
+
+        <div style={{ minWidth:180, marginLeft: 10 }}>
           <select 
             style={{ width:'100%', padding:4, borderRadius:4 }} 
             onChange={(e)=>{ const pt=points.find(p=>p.id===e.target.value); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }}
@@ -496,7 +592,7 @@ export default function App() {
           </select>
         </div>
 
-        <label style={{ display:'flex', alignItems:'center', gap:4 }}>
+        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10 }}>
           <input type="checkbox" checked={showKey} onChange={(e)=> revealAll(e.target.checked)} /> Gabarito
         </label>
       </div>
