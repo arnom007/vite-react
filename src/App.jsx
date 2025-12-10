@@ -155,17 +155,17 @@ export default function App() {
 
         map.current.on('load', () => {
           points.forEach(point => {
-            // Container principal do marcador (âncora)
             const el = document.createElement('div');
             el.className = 'marker-root';
+            // Ajuste crucial para evitar problemas de layout
             el.style.width = '0px'; 
             el.style.height = '0px';
             el.style.display = 'flex';
             el.style.alignItems = 'center';
             el.style.justifyContent = 'center';
-            el.style.flexShrink = '0'; // Impede o container de encolher
+            el.style.flexShrink = '0'; 
             
-            // Container clicável e visual (Hitbox)
+            // Hitbox container
             const content = document.createElement('div');
             content.className = 'marker-content';
             content.style.width = '40px'; 
@@ -176,7 +176,7 @@ export default function App() {
             content.style.alignItems = 'center';
             content.style.justifyContent = 'center';
             content.style.position = 'relative';
-            content.style.flexShrink = '0'; // Impede distorção oval
+            content.style.flexShrink = '0';
             content.style.transition = 'width 0.3s, height 0.3s';
 
             // Elemento de Dica (Pulse)
@@ -211,8 +211,7 @@ export default function App() {
               setAnswer('');
             });
 
-            // CORREÇÃO CRÍTICA: pitchAlignment e rotationAlignment 'viewport'
-            // Isso força o marcador a ficar sempre "em pé" e circular na tela
+            // pitchAlignment: 'viewport' e rotationAlignment: 'viewport' garantem círculo perfeito
             const marker = new maplibregl.Marker({ 
                 element: el, 
                 anchor: 'center',
@@ -222,7 +221,7 @@ export default function App() {
               .setLngLat(point.coords)
               .addTo(map.current);
 
-            // Label (Nome do ponto)
+            // Label
             const labelEl = document.createElement('div');
             labelEl.className = 'label';
             labelEl.textContent = point.name;
@@ -275,7 +274,6 @@ export default function App() {
     };
   }, []);
 
-  // Lógica de Atualização Visual (Blind Mode, Dica, Cores, Tamanho Hitbox)
   useEffect(() => {
     markersRef.current.forEach((rec, id) => {
       const { content, dot, hint, labelEl, labelMarker, point } = rec;
@@ -293,18 +291,11 @@ export default function App() {
 
       // --- Lógica Blind Mode ---
       if (blindMode) {
-          // Aumenta Hitbox para 80px (tamanho do pulso expandido)
           content.style.width = '80px';
           content.style.height = '80px';
-          
-          // Se foi acertado, mostra (verde). Se não, ESCONDE TUDO.
-          if (isGuessed) {
-              dot.style.opacity = '1';
-          } else {
-              dot.style.opacity = '0';
-          }
+          // Se não foi adivinhado, esconde. Se foi, mostra.
+          dot.style.opacity = isGuessed ? '1' : '0';
       } else {
-          // Tamanho normal (40px de hitbox, bolinha visível)
           content.style.width = '40px';
           content.style.height = '40px';
           dot.style.opacity = '1';
@@ -460,7 +451,8 @@ export default function App() {
   const answeredPoints = sortedPoints.filter(p => guessed.includes(p.id));
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', fontFamily: 'Arial, sans-serif', color: '#333' }}>
+    // FIX: Position Fixed para travar a tela
+    <div style={{ position: 'fixed', inset: 0, fontFamily: 'Arial, sans-serif', color: '#333', overflow: 'hidden' }}>
       
       {/* CSS da Animação de Dica */}
       <style>{`
@@ -471,6 +463,14 @@ export default function App() {
         }
         .animate-pulse-hint {
           animation: pulseHint 1s ease-out;
+        }
+        /* Esconde barra de rolagem mas permite rolar */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
       `}</style>
 
@@ -493,16 +493,16 @@ export default function App() {
         </div>
       )}
 
-      <div ref={mapContainer} style={{ width: '100%', height: '100vh' }} />
+      <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
-      <div style={{ position: 'absolute', top: 10, right: 10, background:'rgba(255,255,255,0.45)', padding:6, borderRadius:6, minWidth:90, display:'flex', flexDirection:'column', gap:6, alignItems:'center' }}>
+      <div style={{ position: 'absolute', top: 10, right: 10, background:'rgba(255,255,255,0.45)', padding:6, borderRadius:6, minWidth:90, display:'flex', flexDirection:'column', gap:6, alignItems:'center', zIndex: 10 }}>
         <div style={{ fontSize:11, opacity:0.8 }}>Pitch</div>
         <input type="range" min="0" max="85" value={pitch} onChange={(e) => adjustPitch(e.target.value)} style={{ width:80 }} />
         <div style={{ fontSize:11, opacity:0.8 }}>Proa</div>
         <input type="range" min="0" max="360" value={bearing} onChange={(e) => adjustBearing(e.target.value)} style={{ width:80 }} />
       </div>
 
-      <div style={{ position:'absolute', top:160, right:10, background:'rgba(255,255,255,0.6)', padding:6, borderRadius:6, textAlign:'center' }}>
+      <div style={{ position:'absolute', top:160, right:10, background:'rgba(255,255,255,0.6)', padding:6, borderRadius:6, textAlign:'center', zIndex: 10 }}>
         <div style={{ width:28, height:28, border:'2px solid rgba(0,0,0,0.6)', borderRadius:'50%', margin:'auto', position:'relative' }}>
           <div style={{ position:'absolute', top:4, left:'50%', width:2, height:18, background:'red', transform:`translateX(-50%) rotate(${bearing}deg)` }} />
         </div>
@@ -510,38 +510,56 @@ export default function App() {
       </div>
 
       {currentPoint && (
-        <div style={{ position: 'absolute', top: 100, left: 10, background: 'white', padding: 10, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label>Nome do ponto</label>
-          <input type="text" value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} style={{ padding:6, borderRadius:4, border:'1px solid #ccc' }} />
+        <div style={{ position: 'absolute', top: '15%', left: '50%', transform: 'translateX(-50%)', background: 'white', padding: 10, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.2)', width: '90%', maxWidth: '300px' }}>
+          <label style={{ fontWeight: 'bold', fontSize: 14 }}>Nome do ponto</label>
+          <input type="text" value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} style={{ padding:8, borderRadius:4, border:'1px solid #ccc', width: '100%', boxSizing: 'border-box' }} autoFocus />
           <div style={{ display:'flex', gap:8 }}>
-            <button onClick={checkAnswer} style={{ padding:6, borderRadius:4, backgroundColor:'#4caf50', color:'white', border:'none' }}>Responder</button>
+            <button onClick={checkAnswer} style={{ padding:'8px 16px', borderRadius:4, backgroundColor:'#4caf50', color:'white', border:'none', width: '100%' }}>Responder</button>
           </div>
         </div>
       )}
 
-      {/* Barra Inferior com zIndex alto para ficar sobre o mapa */}
-      <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'white', padding:'6px 10px', display:'flex', alignItems:'center', gap:10, boxShadow:'0 -2px 6px rgba(0,0,0,0.15)', fontSize:14, zIndex: 10 }}>
+      {/* Barra Inferior Responsiva (Scroll Horizontal) */}
+      <div className="scrollbar-hide" style={{ 
+          position:'absolute', 
+          bottom:0, 
+          left:0, 
+          right:0, 
+          background:'white', 
+          padding:'10px', 
+          display:'flex', 
+          alignItems:'center', 
+          gap:12, 
+          boxShadow:'0 -2px 6px rgba(0,0,0,0.15)', 
+          fontSize:14, 
+          zIndex: 30,
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
+          width: '100%',
+          boxSizing: 'border-box'
+      }}>
         
         {/* Seletor Aleatório */}
         <div 
           onClick={() => { if(randomMode) stopRandomMode(); else startRandomMode(); }} 
           style={{ 
-            display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '4px 8px', 
+            display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '6px 10px', 
             border: randomMode ? '2px solid #4caf50' : '1px solid #ccc',
             borderRadius: '6px',
             backgroundColor: randomMode ? '#e8f5e9' : 'transparent',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            flexShrink: 0
           }}
         >
           <b>Aleatório</b>
         </div>
 
         {/* Seletor Áreas */}
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink: 0 }}>
             <div 
               onClick={() => { if(areaMode) stopAreaMode(); else startAreaMode(); }}
               style={{
-                display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '4px 8px',
+                display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '6px 10px',
                 border: areaMode ? '2px solid #4caf50' : '1px solid #ccc',
                 borderRadius: '6px',
                 backgroundColor: areaMode ? '#e8f5e9' : 'transparent',
@@ -558,13 +576,13 @@ export default function App() {
                 </label>
             )}
 
-            <select value={selectedArea} onChange={(e)=> setSelectedArea(e.target.value)} style={{ padding:'4px 6px', borderRadius:4 }}>
+            <select value={selectedArea} onChange={(e)=> setSelectedArea(e.target.value)} style={{ padding:'6px', borderRadius:4, maxWidth: '120px' }}>
               {areaList.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
         </div>
 
         {/* Checkbox Às Cegas */}
-        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, cursor:'pointer', borderLeft: '1px solid #ddd', paddingLeft: 10 }}>
+        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, cursor:'pointer', borderLeft: '1px solid #ddd', paddingLeft: 10, flexShrink: 0 }}>
             <input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} />
             <b>Às Cegas</b>
         </label>
@@ -576,24 +594,25 @@ export default function App() {
                 opacity: blindMode ? 1 : 0,
                 pointerEvents: blindMode ? 'auto' : 'none',
                 transition: 'opacity 0.3s ease',
-                padding: '4px 10px',
+                padding: '6px 12px',
                 borderRadius: 4,
                 border: '1px solid #2196f3',
                 backgroundColor: '#e3f2fd',
                 color: '#1976d2',
                 cursor: 'pointer',
                 fontWeight: 'bold',
-                fontSize: 12
+                fontSize: 12,
+                flexShrink: 0
             }}
         >
             Dica
         </button>
 
-        <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto' }}>Recomeçar</button>
+        <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto', flexShrink: 0 }}>Recomeçar</button>
 
-        <div style={{ minWidth:180, marginLeft: 10 }}>
+        <div style={{ minWidth:180, marginLeft: 10, flexShrink: 0 }}>
           <select 
-            style={{ width:'100%', padding:4, borderRadius:4 }} 
+            style={{ width:'100%', padding:6, borderRadius:4 }} 
             onChange={(e)=>{ const pt=points.find(p=>p.id===e.target.value); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }}
             value=""
           >
@@ -615,7 +634,7 @@ export default function App() {
           </select>
         </div>
 
-        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10 }}>
+        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, flexShrink: 0 }}>
           <input type="checkbox" checked={showKey} onChange={(e)=> revealAll(e.target.checked)} /> Gabarito
         </label>
       </div>
