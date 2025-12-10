@@ -95,19 +95,15 @@ export default function App() {
   const [showKey, setShowKey] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
 
-  // Novos estados
-  const [blindMode, setBlindMode] = useState(false);
-  const [hintTrigger, setHintTrigger] = useState(0); // Gatilho para animação de dica
-
   const [areaMode, setAreaMode] = useState(false);
-  const [randomAreaSequence, setRandomAreaSequence] = useState(false);
+  const [randomAreaSequence, setRandomAreaSequence] = useState(false); // Nova opção
   const [selectedArea, setSelectedArea] = useState('Capricornio');
   const areaList = Object.keys(AREAS);
   const [areaIndex, setAreaIndex] = useState(0);
   const [areaPointIndex, setAreaPointIndex] = useState(0);
   const [areaQueue, setAreaQueue] = useState([]);
 
-  // Inject CSS for MapLibre and Custom Styles
+  // Inject CSS for MapLibre
   useEffect(() => {
     const link = document.createElement("link");
     link.href = "https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css";
@@ -139,6 +135,7 @@ export default function App() {
   useEffect(() => {
     if (map.current) return;
 
+    // Fetch style manually to avoid SecurityError with window.location.href in sandboxed iframes
     const initMap = async () => {
       try {
         const response = await fetch(MAP_STYLE);
@@ -155,42 +152,14 @@ export default function App() {
 
         map.current.on('load', () => {
           points.forEach(point => {
-            // Container para a Hitbox e o Ponto
             const el = document.createElement('div');
-            el.className = 'marker-container';
-            el.style.width = '40px';  // Hitbox maior
-            el.style.height = '40px'; // Hitbox maior
-            el.style.display = 'flex';
-            el.style.justifyContent = 'center';
-            el.style.alignItems = 'center';
+            el.className = 'marker';
+            el.style.width = '12px';
+            el.style.height = '12px';
+            el.style.backgroundColor = 'red';
+            el.style.borderRadius = '50%';
             el.style.cursor = 'pointer';
-            el.style.position = 'relative'; // Para o efeito de dica absoluto
-
-            // O ponto visível (bolinha)
-            const dot = document.createElement('div');
-            dot.className = 'marker-dot';
-            dot.style.width = '12px';
-            dot.style.height = '12px';
-            dot.style.backgroundColor = 'red';
-            dot.style.borderRadius = '50%';
-            dot.style.boxShadow = '0 0 5px rgba(0,0,0,0.6)';
-            dot.style.pointerEvents = 'none'; // Cliques passam para o container
-            dot.style.transition = 'opacity 0.2s'; // Transição suave
-
-            // Elemento de dica (pulse)
-            const hintPulse = document.createElement('div');
-            hintPulse.className = 'hint-pulse';
-            hintPulse.style.position = 'absolute';
-            hintPulse.style.width = '100%';
-            hintPulse.style.height = '100%';
-            hintPulse.style.borderRadius = '50%';
-            hintPulse.style.backgroundColor = 'rgba(255, 255, 255, 0.6)';
-            hintPulse.style.opacity = '0';
-            hintPulse.style.pointerEvents = 'none';
-            hintPulse.style.transform = 'scale(0.5)';
-
-            el.appendChild(dot);
-            el.appendChild(hintPulse);
+            el.style.boxShadow = '0 0 5px rgba(0,0,0,0.6)';
 
             el.addEventListener('click', (e) => {
               e.stopPropagation();
@@ -219,8 +188,7 @@ export default function App() {
               .setLngLat(point.coords)
               .addTo(map.current);
 
-            // Guardar referências incluindo o elemento 'dot' e 'hintPulse'
-            markersRef.current.set(point.id, { marker, el, dot, hintPulse, labelMarker, labelEl, point });
+            markersRef.current.set(point.id, { marker, el, labelMarker, labelEl, point });
           });
 
           map.current.on('move', () => {
@@ -250,42 +218,14 @@ export default function App() {
     };
   }, []);
 
-  // Lógica de Atualização dos Marcadores (Cor, Visibilidade e Dica)
   useEffect(() => {
     markersRef.current.forEach((rec, id) => {
-      const { dot, hintPulse, labelEl, labelMarker, point } = rec;
-      if (!dot) return;
-
-      let color = 'red';
-      let isGuessed = guessed.includes(id);
-      let isCurrent = currentPoint && currentPoint.id === id;
-
-      if (isGuessed) color = 'green';
-      else if (isCurrent) color = 'yellow';
-      else if (showKey) color = 'orange';
-
-      dot.style.backgroundColor = color;
-
-      // Lógica do Modo Às Cegas (Blind Mode)
-      if (blindMode && isCurrent && !isGuessed) {
-        dot.style.opacity = '0'; // Esconde a bolinha
-      } else {
-        dot.style.opacity = '1'; // Mostra a bolinha
-      }
-
-      // Lógica da Animação de Dica
-      if (hintPulse) {
-          // Se for o ponto atual e o trigger for recente (controlado via classe CSS)
-          // Mas vamos fazer manual via trigger do React
-          if (isCurrent && hintTrigger > 0) {
-              // Adiciona classe de animação
-              hintPulse.classList.add('animate-hint');
-              // Remove após animação
-              setTimeout(() => {
-                  hintPulse.classList.remove('animate-hint');
-              }, 1000); // Duração da animação
-          }
-      }
+      const { el, labelEl, labelMarker, point } = rec;
+      if (!el) return;
+      if (guessed.includes(id)) el.style.backgroundColor = 'green';
+      else if (currentPoint && currentPoint.id === id) el.style.backgroundColor = 'yellow';
+      else if (showKey) el.style.backgroundColor = 'orange';
+      else el.style.backgroundColor = 'red';
 
       if (labelEl) {
         if (guessed.includes(id) || showKey) {
@@ -299,12 +239,7 @@ export default function App() {
         }
       }
     });
-  }, [guessed, currentPoint, showKey, blindMode, hintTrigger]);
-
-  const triggerHintAnimation = () => {
-      // Incrementa para disparar o useEffect
-      setHintTrigger(prev => prev + 1);
-  };
+  }, [guessed, currentPoint, showKey]);
 
   const checkAnswer = () => {
     const normalized = normalize(answer);
@@ -315,14 +250,18 @@ export default function App() {
       if (rec && rec.labelEl) rec.labelEl.style.display = '';
 
       if (areaMode && areaQueue.length) {
+        // Lógica de Area
         let nextPoint = null;
+
         if (randomAreaSequence) {
+            // Se estiver em modo aleatório dentro da área
             const remainingInArea = areaQueue.filter(id => !updated.includes(id));
             if (remainingInArea.length > 0) {
                 const randId = remainingInArea[Math.floor(Math.random() * remainingInArea.length)];
                 nextPoint = points.find(p => p.id === randId);
             }
         } else {
+            // Sequencial padrão
             const nextIndex = areaPointIndex + 1;
             if (nextIndex < areaQueue.length) {
                 setAreaPointIndex(nextIndex);
@@ -335,17 +274,20 @@ export default function App() {
              setAnswer('');
              if (map.current) map.current.flyTo({ center: nextPoint.coords });
         } else {
+             // Área acabou, ir para próxima
              const nextAreaIdx = (areaIndex + 1) % areaList.length;
              setAreaIndex(nextAreaIdx);
              const nextAreaName = areaList[nextAreaIdx];
              setSelectedArea(nextAreaName);
 
+             // Calcular próxima fila manualmente para já setar o ponto
              const nextNames = AREAS[nextAreaName] || [];
              const nextIds = nextNames.map(n => nameToPointId(n)).filter(Boolean);
              setAreaQueue(nextIds);
              setAreaPointIndex(0);
 
-             const availableNext = nextIds.filter(id => !updated.includes(id));
+             // Pegar o primeiro ponto da próxima área (ou aleatório da próxima área)
+             const availableNext = nextIds.filter(id => !updated.includes(id)); // Evitar repetidos globais se houver overlap
              
              if (availableNext.length > 0) {
                  let firstId;
@@ -385,12 +327,13 @@ export default function App() {
 
   const startAreaMode = () => {
     setAreaMode(true);
-    setRandomMode(false);
+    setRandomMode(false); // Desativa modo aleatório global
     const names = AREAS[selectedArea] || [];
     const ids = names.map(n => nameToPointId(n)).filter(Boolean);
     setAreaQueue(ids);
     setAreaIndex(areaList.indexOf(selectedArea));
     setAreaPointIndex(0);
+    // Iniciar primeiro ponto
     if (ids.length) { 
         let startP;
         if (randomAreaSequence) {
@@ -410,6 +353,7 @@ export default function App() {
   const startRandomMode = () => {
     setRandomMode(true);
     setAreaMode(false);
+    // Lógica para iniciar ponto aleatório imediato se não houver um
     if (!currentPoint) {
         const rem = points.filter(p => !guessed.includes(p.id));
         const next = rem.length ? rem[Math.floor(Math.random() * rem.length)] : null;
@@ -424,24 +368,13 @@ export default function App() {
   const stopAreaMode = () => { setAreaMode(false); setAreaQueue([]); setAreaPointIndex(0); };
   const stopRandomMode = () => { setRandomMode(false); };
 
+  // Separar pontos para o dropdown
   const sortedPoints = [...points].sort((a, b) => a.name.localeCompare(b.name));
   const missingPoints = sortedPoints.filter(p => !guessed.includes(p.id));
   const answeredPoints = sortedPoints.filter(p => guessed.includes(p.id));
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', fontFamily: 'Arial, sans-serif', color: '#333' }}>
-      
-      {/* Estilos para a animação da Dica */}
-      <style>{`
-        @keyframes hintPulseAnim {
-          0% { transform: scale(0.5); opacity: 0.8; }
-          50% { transform: scale(1.5); opacity: 0.4; }
-          100% { transform: scale(2.0); opacity: 0; }
-        }
-        .animate-hint {
-          animation: hintPulseAnim 0.5s ease-out 2;
-        }
-      `}</style>
 
       {showIntro && (
         <div style={{ position: 'absolute', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
@@ -463,6 +396,7 @@ export default function App() {
         </div>
       )}
 
+      {/* Alterado height de 82vh para 100vh para remover a barra cinza */}
       <div ref={mapContainer} style={{ width: '100%', height: '100vh' }} />
 
       <div style={{ position: 'absolute', top: 10, right: 10, background:'rgba(255,255,255,0.45)', padding:6, borderRadius:6, minWidth:90, display:'flex', flexDirection:'column', gap:6, alignItems:'center' }}>
@@ -489,8 +423,10 @@ export default function App() {
         </div>
       )}
 
+      {/* Adicionado zIndex para garantir que a barra fique sobre o mapa */}
       <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'white', padding:'6px 10px', display:'flex', alignItems:'center', gap:10, boxShadow:'0 -2px 6px rgba(0,0,0,0.15)', fontSize:14, zIndex: 10 }}>
         
+        {/* Seletor Estilo Botão: Aleatório */}
         <div 
           onClick={() => { if(randomMode) stopRandomMode(); else startRandomMode(); }} 
           style={{ 
@@ -504,6 +440,7 @@ export default function App() {
           <b>Aleatório</b>
         </div>
 
+        {/* Seletor Estilo Botão: Áreas */}
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <div 
               onClick={() => { if(areaMode) stopAreaMode(); else startAreaMode(); }}
@@ -518,6 +455,7 @@ export default function App() {
               <b>Áreas</b>
             </div>
 
+            {/* Checkbox "Aleatório na Área" (Só aparece se Áreas estiver ativo) */}
             {areaMode && (
                 <label style={{ display:'flex', alignItems:'center', gap:4, fontSize: 12, cursor:'pointer' }} title="Sequência aleatória dentro da área atual">
                     <input type="checkbox" checked={randomAreaSequence} onChange={(e) => setRandomAreaSequence(e.target.checked)} />
@@ -530,35 +468,11 @@ export default function App() {
             </select>
         </div>
 
-        {/* Checkbox Às Cegas */}
-        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, cursor:'pointer', borderLeft: '1px solid #ddd', paddingLeft: 10 }}>
-            <input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} />
-            <b>Às Cegas</b>
-        </label>
+        <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 10 }}>Recomeçar</button>
 
-        {/* Botão Dica - Só aparece se BlindMode estiver ativo */}
-        <button
-            onClick={triggerHintAnimation}
-            style={{
-                opacity: blindMode ? 1 : 0,
-                pointerEvents: blindMode ? 'auto' : 'none',
-                transition: 'opacity 0.3s ease',
-                padding: '4px 10px',
-                borderRadius: 4,
-                border: '1px solid #2196f3',
-                backgroundColor: '#e3f2fd',
-                color: '#1976d2',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: 12
-            }}
-        >
-            Dica
-        </button>
+        <div style={{ marginLeft:'auto' }}>Tempo: {elapsedTime}s {" "} {guessed.length}/{points.length}</div>
 
-        <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto' }}>Recomeçar</button>
-
-        <div style={{ minWidth:180, marginLeft: 10 }}>
+        <div style={{ minWidth:180 }}>
           <select 
             style={{ width:'100%', padding:4, borderRadius:4 }} 
             onChange={(e)=>{ const pt=points.find(p=>p.id===e.target.value); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }}
@@ -582,7 +496,7 @@ export default function App() {
           </select>
         </div>
 
-        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10 }}>
+        <label style={{ display:'flex', alignItems:'center', gap:4 }}>
           <input type="checkbox" checked={showKey} onChange={(e)=> revealAll(e.target.checked)} /> Gabarito
         </label>
       </div>
