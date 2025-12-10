@@ -447,9 +447,25 @@ export default function App() {
   const stopAreaMode = () => { setAreaMode(false); setAreaQueue([]); setAreaPointIndex(0); };
   const stopRandomMode = () => { setRandomMode(false); };
 
+  // --- Lógica para o Dropdown ---
   const sortedPoints = [...points].sort((a, b) => a.name.localeCompare(b.name));
+  
+  // 1. Aleatório (ou Padrão)
   const missingPoints = sortedPoints.filter(p => !guessed.includes(p.id));
   const answeredPoints = sortedPoints.filter(p => guessed.includes(p.id));
+
+  // 2. Modo Áreas
+  // Descobre quais pontos pertencem a pelo menos uma área
+  const pointsInAnyArea = new Set();
+  Object.values(AREAS).forEach(names => {
+      names.forEach(name => {
+          const id = nameToPointId(name);
+          if (id) pointsInAnyArea.add(id);
+      });
+  });
+
+  // Lista de pontos que NÃO estão em nenhuma área
+  const otherPointsList = sortedPoints.filter(p => !pointsInAnyArea.has(p.id));
 
   return (
     // FIX: Position Fixed para travar a tela
@@ -618,20 +634,73 @@ export default function App() {
             value=""
           >
             <option value="">-- Ir para ponto --</option>
-            {missingPoints.length > 0 && (
-                <optgroup label="Faltantes">
-                    {missingPoints.map(pt => (
-                        <option key={pt.id} value={pt.id}>{pt.name}</option>
-                    ))}
-                </optgroup>
+            
+            {/* LÓGICA DE EXIBIÇÃO BASEADA NO MODO */}
+            {!areaMode ? (
+              // MODO ALEATÓRIO/PADRÃO: Faltantes vs Respondidos
+              <>
+                {missingPoints.length > 0 && (
+                    <optgroup label="Faltantes">
+                        {missingPoints.map(pt => (
+                            <option key={pt.id} value={pt.id}>{pt.name}</option>
+                        ))}
+                    </optgroup>
+                )}
+                {answeredPoints.length > 0 && (
+                    <optgroup label="Respondidos">
+                        {answeredPoints.map(pt => (
+                            <option key={pt.id} value={pt.id}>{pt.name} (OK)</option>
+                        ))}
+                    </optgroup>
+                )}
+              </>
+            ) : (
+              // MODO ÁREAS: Agrupar por Área + Demais Pontos
+              <>
+                {Object.entries(AREAS).map(([areaName, areaPointsNames]) => {
+                    const areaPointsIds = areaPointsNames.map(n => nameToPointId(n)).filter(Boolean);
+                    // Separar acertados e faltantes dentro da área
+                    const areaMissing = areaPointsIds.filter(id => !guessed.includes(id));
+                    const areaGuessed = areaPointsIds.filter(id => guessed.includes(id));
+                    
+                    // Ordenar alfabeticamente para ficar bonito
+                    areaMissing.sort((a,b) => { 
+                        const pa = points.find(p=>p.id===a); const pb = points.find(p=>p.id===b);
+                        return pa.name.localeCompare(pb.name);
+                    });
+                    areaGuessed.sort((a,b) => { 
+                        const pa = points.find(p=>p.id===a); const pb = points.find(p=>p.id===b);
+                        return pa.name.localeCompare(pb.name);
+                    });
+
+                    return (
+                        <optgroup key={areaName} label={areaName}>
+                            {areaMissing.map(id => {
+                                const pt = points.find(p => p.id === id);
+                                return <option key={id} value={id}>{pt.name}</option>;
+                            })}
+                            {areaGuessed.map(id => {
+                                const pt = points.find(p => p.id === id);
+                                return <option key={id} value={id}>{pt.name} (OK)</option>;
+                            })}
+                        </optgroup>
+                    );
+                })}
+
+                {/* GRUPO: DEMAIS PONTOS */}
+                {otherPointsList.length > 0 && (
+                    <optgroup label="DEMAIS PONTOS">
+                        {otherPointsList.filter(p => !guessed.includes(p.id)).map(pt => (
+                            <option key={pt.id} value={pt.id}>{pt.name}</option>
+                        ))}
+                        {otherPointsList.filter(p => guessed.includes(p.id)).map(pt => (
+                            <option key={pt.id} value={pt.id}>{pt.name} (OK)</option>
+                        ))}
+                    </optgroup>
+                )}
+              </>
             )}
-            {answeredPoints.length > 0 && (
-                <optgroup label="Respondidos">
-                    {answeredPoints.map(pt => (
-                        <option key={pt.id} value={pt.id}>{pt.name} (OK)</option>
-                    ))}
-                </optgroup>
-            )}
+
           </select>
         </div>
 
