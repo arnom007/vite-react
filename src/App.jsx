@@ -4,7 +4,7 @@ import maplibregl from "maplibre-gl";
 const MAPTILER_KEY = "YHlTRP429Wo5PZXGJklr";
 const MAP_STYLE = `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`;
 
-// Coordenadas Iniciais atualizadas: 21°59'13"S 47°20'14"W
+// Coordenadas Iniciais: 21°59'13"S 47°20'14"W
 const INITIAL_CENTER = [-47.3372, -21.9869];
 
 const points = [
@@ -69,13 +69,13 @@ const points = [
 
 const AREAS = {
   Capricornio: [
-    'Trevo Aguaí Anhanguera','Leme','Leme 2000','Araras','Araras 2200','Cordeirópolis','Rio Claro 2000','Rio Claro','Ipeúna','Lagoa na SP-225','Itirapina','FAZ DA TOCA 2700','Analândia','Corumbataí'
+    'Trevo Aguaí Anhanguera','Leme','Leme 2000','Araras','Araras 2200','Cordeirópolis','Rio Claro 2000','Rio Claro','Ipeúna','Lagoa na SP-225','Itirapina','FAZ DA TOCA 2700','Analândia','Corumbataí','Santa Cruz da Conceição'
   ],
   Aquarius: [
-    'Trevo Aguaí Anhanguera','Analândia','Analândia 2800','Itirapina','Itirapina 2600','Lagoa na SP-225','Fazenda Brotas','Américo Brasiliense','São Carlos 2600','Descalvado','Porto Ferreira'
+    'Trevo Aguaí Anhanguera','Analândia','Analândia 2800','Itirapina','Itirapina 2600','Lagoa na SP-225','Fazenda Brotas','Américo Brasiliense','São Carlos 2600','Descalvado','Porto Ferreira','São Carlos','Ibaté'
   ],
   Peixes: [
-    'Porto Ferreira','Descalvado','Usina Ipiranga 2500','Faz da Barra 2300','Faz Álamo 2400','Faz Pixoxo 2100','Américo Brasiliense','Rincão','Usina sta rita 2100','Pedágio São Simão','Luís Antônio'
+    'Porto Ferreira','Descalvado','Usina Ipiranga 2500','Faz da Barra 2300','Faz Álamo 2400','Faz Pixoxo 2100','Américo Brasiliense','Rincão','Usina sta rita 2100','Pedágio São Simão','Luís Antônio','Área Vermelha 2100'
   ],
   Taurus: [
     'Porto Ferreira','Pedágio São Simão','Santa Rita do Passa Quatro 2800','Santa Rita do Passa Quatro','Santa Cruz da Esperança','Fazenda da Serra','Mococa','São Simão','Santa Rosa de Viterbo'
@@ -123,10 +123,14 @@ export default function App() {
   
   const [showKey, setShowKey] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
-  const [showFullInstructions, setShowFullInstructions] = useState(false); // Novo estado
+  const [showFullInstructions, setShowFullInstructions] = useState(false);
   const [hintTrigger, setHintTrigger] = useState(0);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [feedback, setFeedback] = useState(null); // Novo estado para erro: 'error' | null
+  const [feedback, setFeedback] = useState(null);
+
+  // Estados de Conclusão
+  const [showCompletion, setShowCompletion] = useState(false);
+  const [finalTime, setFinalTime] = useState(0);
 
   const [selectedArea, setSelectedArea] = useState('Capricornio');
   const areaList = Object.keys(AREAS);
@@ -143,6 +147,19 @@ export default function App() {
     const norm = normalize(name);
     const p = points.find(pt => normalize(pt.name) === norm || (pt.aliases || []).some(a => normalize(a) === norm));
     return p ? p.id : null;
+  };
+
+  const formatTime = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    const parts = [];
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    parts.push(`${seconds}s`);
+    
+    return parts.join(' ');
   };
 
   const getPointInfo = (point) => {
@@ -183,6 +200,7 @@ export default function App() {
     setAreaPointIndex(0);
   }, [selectedArea]);
 
+  // UseEffect para limites
   useEffect(() => {
     if (!isMapLoaded || !map.current) return;
 
@@ -439,7 +457,6 @@ export default function App() {
     });
   }, [guessed, currentPoint, showKey, blindMode, hintTrigger, isMapLoaded]);
 
-  // Lista ordenada alfabeticamente para navegação consistente
   const sortedPoints = [...points].sort((a, b) => a.name.localeCompare(b.name));
 
   const moveToNextPoint = () => {
@@ -448,9 +465,7 @@ export default function App() {
       let nextPoint = null;
 
       if (areaMode) {
-          // Lógica de Área
           if (randomAreaSequence) {
-              // Próximo aleatório não respondido na área
               const updated = [...guessed, currentPoint.id];
               const remainingInArea = areaQueue.filter(id => !updated.includes(id));
               if (remainingInArea.length > 0) {
@@ -458,7 +473,6 @@ export default function App() {
                   nextPoint = points.find(p => p.id === randId);
               }
           } else {
-              // Próximo na fila da área
               const currentIndexInQueue = areaQueue.indexOf(currentPoint.id);
               if (currentIndexInQueue >= 0 && currentIndexInQueue < areaQueue.length - 1) {
                   nextPoint = points.find(p => p.id === areaQueue[currentIndexInQueue + 1]);
@@ -466,12 +480,11 @@ export default function App() {
               }
           }
       } else {
-          // Lógica Manual/Aleatório (Segue ordem alfabética global)
           const currentIndex = sortedPoints.findIndex(p => p.id === currentPoint.id);
           if (currentIndex >= 0 && currentIndex < sortedPoints.length - 1) {
               nextPoint = sortedPoints[currentIndex + 1];
           } else if (currentIndex === sortedPoints.length - 1) {
-              nextPoint = sortedPoints[0]; // Loop
+              nextPoint = sortedPoints[0]; 
           }
       }
 
@@ -498,7 +511,7 @@ export default function App() {
           if (currentIndex > 0) {
               prevPoint = sortedPoints[currentIndex - 1];
           } else if (currentIndex === 0) {
-              prevPoint = sortedPoints[sortedPoints.length - 1]; // Loop
+              prevPoint = sortedPoints[sortedPoints.length - 1]; 
           }
       }
 
@@ -510,16 +523,13 @@ export default function App() {
       }
   };
 
-  // Keyboard Shortcuts
   useEffect(() => {
       const handleKeyDown = (e) => {
-          // Enter is handled on Input
           if (e.key === 'ArrowRight') {
               moveToNextPoint();
           } else if (e.key === 'ArrowLeft') {
               moveToPrevPoint();
           } else if (e.ctrlKey && e.code === 'Space') {
-              // Só ativa se não estiver digitando
               e.preventDefault();
               revealAll(!showKey);
           }
@@ -532,6 +542,12 @@ export default function App() {
 
   const triggerHint = () => {
       setHintTrigger(prev => prev + 1);
+  };
+
+  const handleCompletion = () => {
+      setFinalTime(elapsedTime);
+      setShowCompletion(true);
+      // Removido setTimeout para não fechar sozinho
   };
 
   const checkAnswer = () => {
@@ -587,7 +603,7 @@ export default function App() {
                  setAnswer('');
                  if (map.current && firstPoint) map.current.flyTo({ center: firstPoint.coords });
              } else {
-                 alert('Todas as áreas finalizadas!');
+                 handleCompletion();
                  setCurrentPoint(null);
              }
         }
@@ -596,10 +612,9 @@ export default function App() {
         const remaining = points.filter(p => !updated.includes(p.id));
         const next = remaining.length ? remaining[Math.floor(Math.random() * remaining.length)] : null;
         if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
-        else { setCurrentPoint(null); setAnswer(''); }
+        else { handleCompletion(); setCurrentPoint(null); setAnswer(''); }
       } else { setCurrentPoint(null); setAnswer(''); }
     } else {
-      // Feedback Minimalista
       setFeedback('error');
     }
   };
@@ -607,7 +622,19 @@ export default function App() {
   useEffect(() => { const id = setInterval(() => setElapsedTime(Math.floor((Date.now() - startTime) / 1000)), 1000); return () => clearInterval(id); }, [startTime]);
 
   const revealAll = (show) => { setShowKey(show); markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = show ? '' : 'none'; }); };
-  const resetGame = () => { setGuessed([]); setCurrentPoint(null); setAnswer(''); setFeedback(null); setStartTime(Date.now()); setShowKey(false); if (map.current) map.current.flyTo({ center: INITIAL_CENTER, zoom: 12, pitch, bearing: bearing - MAP_DECLINATION }); markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = 'none'; }); };
+  
+  const resetGame = () => { 
+      setGuessed([]); 
+      setCurrentPoint(null); 
+      setAnswer(''); 
+      setFeedback(null); 
+      setStartTime(Date.now()); 
+      setFinalTime(0); 
+      setShowCompletion(false); 
+      setShowKey(false); 
+      if (map.current) map.current.flyTo({ center: INITIAL_CENTER, zoom: 12, pitch, bearing: bearing - MAP_DECLINATION }); 
+      markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = 'none'; }); 
+  };
 
   const adjustPitch = (val) => { const p = Math.max(0, Math.min(85, Number(val))); setPitch(p); if (map.current) map.current.setPitch(p); };
   const adjustBearing = (val) => { const b = (Number(val) + 360) % 360; setBearing(b); if (map.current) map.current.setBearing(b - MAP_DECLINATION); };
@@ -683,6 +710,13 @@ export default function App() {
         .animate-pulse-hint {
           animation: pulseHint 1s ease-out;
         }
+        @keyframes slideDown {
+            from { transform: translate(-50%, -100%); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        .completion-popup {
+            animation: slideDown 0.5s ease-out forwards;
+        }
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
@@ -691,6 +725,49 @@ export default function App() {
             scrollbar-width: none;
         }
       `}</style>
+
+      {/* Completion Popup */}
+      {showCompletion && (
+          <div className="completion-popup" style={{
+              position: 'absolute',
+              top: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: 'white',
+              padding: '24px 32px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              zIndex: 9999,
+              textAlign: 'center',
+              pointerEvents: 'auto', // Permite clicar no botão
+              minWidth: '200px'
+          }}>
+              <button 
+                onClick={() => setShowCompletion(false)}
+                style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '18px',
+                    cursor: 'pointer',
+                    color: '#999',
+                    padding: '4px',
+                    lineHeight: 1
+                }}
+                title="Fechar"
+              >
+                ✕
+              </button>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
+                  Parabéns! ↗️🔥
+              </div>
+              <div style={{ fontSize: '16px', color: '#555' }}>
+                  tempo usado: <span style={{ fontWeight: 'bold', color: '#333' }}>{formatTime(finalTime)}</span>
+              </div>
+          </div>
+      )}
 
       {showIntro && (
         <div style={{ position: 'absolute', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
@@ -715,7 +792,6 @@ export default function App() {
                 "O SENHOR é o meu pastor; nada me faltará." - Salmo 23.1
             </p>
 
-            {/* Toggle de Instruções Completas */}
             <div style={{ borderTop: '1px solid #eee', paddingTop: 10 }}>
                 <button 
                     onClick={() => setShowFullInstructions(!showFullInstructions)}
@@ -787,7 +863,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Resto do JSX da barra inferior (mantido igual) */}
       <div className="scrollbar-hide" style={{ 
           position:'absolute', 
           bottom:0, 
@@ -866,7 +941,6 @@ export default function App() {
             <b>Às Cegas</b>
         </label>
 
-        {/* Botão Dica (aparece se blindMode) */}
         <button
             onClick={triggerHint}
             style={{
@@ -887,7 +961,7 @@ export default function App() {
             Dica
         </button>
 
-        {/* Boundary Control - Moved here */}
+        {/* Boundary Control */}
         <div style={{ display:'flex', alignItems: 'center', flexShrink: 0, border: '1px solid #ffcc80', borderRadius: 6, overflow: 'hidden', height: '28px', backgroundColor: 'white' }}>
             <div style={{ padding: '0 8px', fontSize: 11, background: '#fff3e0', color: '#e65100', display: 'flex', alignItems: 'center', height: '100%', fontWeight: 'bold', borderRight: '1px solid #ffcc80' }}>
                 Limites
