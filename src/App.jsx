@@ -4,13 +4,13 @@ import maplibregl from "maplibre-gl";
 const MAPTILER_KEY = "YHlTRP429Wo5PZXGJklr";
 const MAP_STYLE = `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`;
 
-// Lista de pontos atualizada (removidos: 060, 200, 100, 130, Rua com Prédios Brancos)
-// Adicionados: Corumbataí, Luís Antônio, São Simão, Sumidouro, Estrada SO/SGT
+// Coordenadas Iniciais atualizadas: 21°59'13"S 47°20'14"W
+const INITIAL_CENTER = [-47.3372, -21.9869];
+
 const points = [
   { id: 'p1', name: 'Júpiter', aliases: ['jupiter'], coords: [-47.45, -21.9878] },
   { id: 'p2', name: 'Prédios Brancos', aliases: ['predios brancos'], coords: [-47.4142, -21.9872] },
   { id: 'p3', name: 'Trevo', aliases: ['trevo'], coords: [-47.3975, -22.0106] },
-  // Removidos: p4(130), p5(200), p6(100), p7(060)
   { id: 'p8', name: 'FAZ DA TOCA 2700', aliases: ['faz da toca 2700'], coords: [-47.7033, -22.2456] },
   { id: 'p9', name: 'Engenho', aliases: ['engenho'], coords: [-47.3653, -22.0378] },
   { id: 'p10', name: 'Analândia 2800', aliases: ['analandia 2800'], coords: [-47.7192, -22.1567] },
@@ -31,7 +31,7 @@ const points = [
   { id: 'p25', name: 'Cravinhos', aliases: ['cravinhos'], coords: [-47.7278, -21.3286] },
   { id: 'p26', name: 'Cajuru', aliases: ['cajuru'], coords: [-47.3058, -21.2731] },
   { id: 'p27', name: 'Mococa', aliases: ['mococa'], coords: [-47.0003, -21.4756] },
-  { id: 'p28', name: 'Santa Rosa do Viterbo', aliases: ['santa rosa do viterbo'], coords: [-47.3661, -21.501] },
+  { id: 'p28', name: 'Santa Rosa de Viterbo', aliases: ['santa rosa de viterbo'], coords: [-47.3661, -21.501] },
   { id: 'p29', name: 'Santa Rita do Passa Quatro', aliases: ['santa rita do passa quatro'], coords: [-47.4803, -21.7086] },
   { id: 'p30', name: 'Porto Ferreira', aliases: ['porto ferreira'], coords: [-47.4833, -21.857] },
   { id: 'p31', name: 'Leme', aliases: ['leme'], coords: [-47.3847, -22.1811] },
@@ -45,13 +45,12 @@ const points = [
   { id: 'p39', name: 'Trevo Aguaí Anhanguera', aliases: ['trevo aguai anhanguera'], coords: [-47.432, -22.0383] },
   { id: 'p40', name: 'Itirapina', aliases: ['itirapina'], coords: [-47.8158, -22.2575] },
   { id: 'p41', name: 'Araraquara', aliases: ['araraquara'], coords: [-48.167, -21.7894] },
-  { id: 'p42', name: 'São Carlos', aliases: ['sao carlos'], coords: [-47.8903, -22.0164] },
+  { id: 'p42', name: 'São Carlos', aliases: ['sao carlos'], coords: [-22.0164, -47.8903] },
   { id: 'p43', name: 'Ibaté', aliases: ['ibate'], coords: [-47.9983, -21.9511] },
   { id: 'p44', name: 'Ipeúna', aliases: ['ipeuna'], coords: [-47.7114, -22.4331] },
   { id: 'p45', name: 'Morro da Antena', aliases: ['morro da antena'], coords: [-47.4836, -22.0042] },
   { id: 'p46', name: 'Ponta W Vila SGT', aliases: ['ponta w vila sgt'], coords: [-47.3697, -21.9906] },
   { id: 'p47', name: 'Ponte Velha', aliases: ['ponte velha'], coords: [-47.3683, -21.9261] },
-  // Removido: p48 (Rua com Prédios Brancos)
   { id: 'p49', name: 'Lagoa na SP-225', aliases: ['lagoa na sp-225'], coords: [-48.0144, -22.2878] },
   { id: 'p50', name: 'Fazenda Brotas', aliases: ['fazenda brotas'], coords: [-48.0544, -22.235] },
   { id: 'p51', name: 'Rincão', aliases: ['rincao'], coords: [-48.0722, -21.5878] },
@@ -60,13 +59,12 @@ const points = [
   { id: 'p54', name: 'Fazenda da Serra', aliases: ['fazenda da serra'], coords: [-47.2111, -21.3578] },
   { id: 'p55', name: 'Américo Brasiliense', aliases: ['americo brasiliense'], coords: [-48.1222, -21.7408] },
   { id: 'p56', name: 'Guatapará', aliases: ['guatapara'], coords: [-48.0367, -21.4956] },
-  
-  // Novos Pontos
   { id: 'p57', name: 'Corumbataí', aliases: ['corumbatai'], coords: [-47.6228, -22.2214] },
   { id: 'p58', name: 'Luís Antônio', aliases: ['luis antonio'], coords: [-47.7008, -21.5519] },
   { id: 'p59', name: 'São Simão', aliases: ['sao simao'], coords: [-47.5556, -21.4794] },
   { id: 'p60', name: 'Sumidouro', aliases: ['sumidouro'], coords: [-47.3467, -21.9636] },
   { id: 'p61', name: 'Estrada SO/SGT', aliases: ['estrada so sgt'], coords: [-47.3447, -22.0067] },
+  { id: 'p62', name: 'Descalvado', aliases: ['descalvado'], coords: [-47.6258, -21.9117] },
 ];
 
 const AREAS = {
@@ -76,14 +74,30 @@ const AREAS = {
   Aquarius: [
     'Trevo Aguaí Anhanguera','Analândia','Analândia 2800','Itirapina','Itirapina 2600','Lagoa na SP-225','Fazenda Brotas','Américo Brasiliense','São Carlos 2600','Descalvado','Porto Ferreira'
   ],
-  Peixes: [ // Renomeado de Pisces
+  Peixes: [
     'Porto Ferreira','Descalvado','Usina Ipiranga 2500','Faz da Barra 2300','Faz Álamo 2400','Faz Pixoxo 2100','Américo Brasiliense','Rincão','Usina sta rita 2100','Pedágio São Simão','Luís Antônio'
   ],
   Taurus: [
-    'Porto Ferreira','Pedágio São Simão','Santa Rita do Passa Quatro 2800','Santa Rita do Passa Quatro','Santa Cruz da Esperança','Fazenda da Serra','Mococa','São Simão'
+    'Porto Ferreira','Pedágio São Simão','Santa Rita do Passa Quatro 2800','Santa Rita do Passa Quatro','Santa Cruz da Esperança','Fazenda da Serra','Mococa','São Simão','Santa Rosa de Viterbo'
   ],
-  'Tráfego AFA': [ // Nova Área
+  'Tráfego AFA': [
     'Sumidouro','Estrada SO/SGT','Ponte Velha','Prédios Brancos','Júpiter','Morro da Antena','Trevo','Trevo Aguaí Anhanguera','Lagoa do Aeroclube','Engenho','Ponta W Vila SGT'
+  ]
+};
+
+// Definição dos Limites (Fronteiras)
+const AREA_LIMITS = {
+  Capricornio: [
+    'Trevo Aguaí Anhanguera', 'Leme', 'Araras', 'Cordeirópolis', 'Ipeúna', 'Lagoa na SP-225', 'Itirapina', 'Analândia'
+  ],
+  Aquarius: [
+    'Trevo Aguaí Anhanguera', 'Analândia', 'Itirapina', 'Lagoa na SP-225', 'Fazenda Brotas', 'Américo Brasiliense', 'Descalvado', 'Porto Ferreira'
+  ],
+  Peixes: [
+    'Porto Ferreira', 'Pedágio São Simão', 'Rincão', 'Américo Brasiliense', 'Descalvado'
+  ],
+  Taurus: [
+    'Porto Ferreira', 'Pedágio São Simão', 'Santa Cruz da Esperança', 'Fazenda da Serra', 'Mococa', 'Santa Rosa de Viterbo', 'Santa Rita do Passa Quatro'
   ]
 };
 
@@ -100,31 +114,24 @@ export default function App() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [pitch, setPitch] = useState(60);
   const [bearing, setBearing] = useState(130);
+  
+  // Modos
   const [randomMode, setRandomMode] = useState(false);
-  const [showKey, setShowKey] = useState(false);
-  const [showIntro, setShowIntro] = useState(true);
-
-  const [blindMode, setBlindMode] = useState(false);
-  const [hintTrigger, setHintTrigger] = useState(0);
-
   const [areaMode, setAreaMode] = useState(false);
   const [randomAreaSequence, setRandomAreaSequence] = useState(false);
+  const [blindMode, setBlindMode] = useState(false);
+  
+  const [showKey, setShowKey] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
+  const [hintTrigger, setHintTrigger] = useState(0);
+
   const [selectedArea, setSelectedArea] = useState('Capricornio');
   const areaList = Object.keys(AREAS);
   const [areaIndex, setAreaIndex] = useState(0);
   const [areaPointIndex, setAreaPointIndex] = useState(0);
   const [areaQueue, setAreaQueue] = useState([]);
 
-  useEffect(() => {
-    const link = document.createElement("link");
-    link.href = "https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css";
-    link.rel = "stylesheet";
-    document.head.appendChild(link);
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, []);
-
+  // Helper para normalizar nomes
   const normalize = (s) => {
     try { return String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
     catch (e) { return String(s || '').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
@@ -135,6 +142,46 @@ export default function App() {
     const p = points.find(pt => normalize(pt.name) === norm || (pt.aliases || []).some(a => normalize(a) === norm));
     return p ? p.id : null;
   };
+
+  // Helper para encontrar limites e informações do ponto atual
+  const getPointInfo = (point) => {
+    if (!point) return "";
+    
+    let infoParts = [];
+    const pId = point.id;
+    
+    Object.entries(AREAS).forEach(([areaName, areaPointsNames]) => {
+      // Verifica se o ponto pertence à área
+      const isInArea = areaPointsNames.map(n => nameToPointId(n)).includes(pId);
+      
+      if (isInArea) {
+        // Verifica se é limite dessa área
+        const limits = AREA_LIMITS[areaName] || [];
+        const isLimit = limits.map(n => nameToPointId(n)).includes(pId);
+        
+        if (isLimit) {
+          infoParts.push(`Limite da área de ${areaName}`);
+        } else {
+          infoParts.push(`Ponto da área de ${areaName}`);
+        }
+      }
+    });
+
+    // Remove duplicatas e formata
+    const uniqueInfo = [...new Set(infoParts)];
+    if (uniqueInfo.length === 0) return "Ponto Isolado";
+    return uniqueInfo.join(" | ");
+  };
+
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.href = "https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+    return () => {
+      document.head.removeChild(link);
+    };
+  }, []);
 
   useEffect(() => {
     const names = AREAS[selectedArea] || [];
@@ -154,13 +201,54 @@ export default function App() {
         map.current = new maplibregl.Map({
           container: mapContainer.current,
           style: styleJson,
-          center: [-47.524, -21.812],
-          zoom: 16,
+          center: INITIAL_CENTER,
+          zoom: 12,
           pitch,
           bearing: bearing - MAP_DECLINATION,
         });
 
         map.current.on('load', () => {
+          // --- DESENHAR LIMITES DE ÁREAS (POLÍGONOS) ---
+          Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => {
+            const coords = limitNames.map(name => {
+              const pid = nameToPointId(name);
+              const p = points.find(pt => pt.id === pid);
+              return p ? p.coords : null;
+            }).filter(Boolean);
+
+            if (coords.length > 2) {
+              // Fechar o polígono
+              coords.push(coords[0]);
+
+              map.current.addSource(`source-${areaName}`, {
+                'type': 'geojson',
+                'data': {
+                  'type': 'Feature',
+                  'geometry': {
+                    'type': 'LineString',
+                    'coordinates': coords
+                  }
+                }
+              });
+
+              map.current.addLayer({
+                'id': `layer-${areaName}`,
+                'type': 'line',
+                'source': `source-${areaName}`,
+                'layout': {
+                  'line-join': 'round',
+                  'line-cap': 'round'
+                },
+                'paint': {
+                  'line-color': '#ffffff',
+                  'line-width': 2,
+                  'line-opacity': 0.3
+                }
+              });
+            }
+          });
+
+          // --- ADICIONAR PONTOS ---
           points.forEach(point => {
             const el = document.createElement('div');
             el.className = 'marker-root';
@@ -399,10 +487,15 @@ export default function App() {
   useEffect(() => { const id = setInterval(() => setElapsedTime(Math.floor((Date.now() - startTime) / 1000)), 1000); return () => clearInterval(id); }, [startTime]);
 
   const revealAll = (show) => { setShowKey(show); markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = show ? '' : 'none'; }); };
-  const resetGame = () => { setGuessed([]); setCurrentPoint(null); setAnswer(''); setStartTime(Date.now()); setShowKey(false); if (map.current) map.current.flyTo({ center: [-47.524, -21.812], zoom: 16, pitch, bearing: bearing - MAP_DECLINATION }); markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = 'none'; }); };
+  const resetGame = () => { setGuessed([]); setCurrentPoint(null); setAnswer(''); setStartTime(Date.now()); setShowKey(false); if (map.current) map.current.flyTo({ center: INITIAL_CENTER, zoom: 12, pitch, bearing: bearing - MAP_DECLINATION }); markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = 'none'; }); };
 
   const adjustPitch = (val) => { const p = Math.max(0, Math.min(85, Number(val))); setPitch(p); if (map.current) map.current.setPitch(p); };
   const adjustBearing = (val) => { const b = (Number(val) + 360) % 360; setBearing(b); if (map.current) map.current.setBearing(b - MAP_DECLINATION); };
+
+  const startManualMode = () => {
+    setAreaMode(false);
+    setRandomMode(false);
+  };
 
   const startAreaMode = () => {
     setAreaMode(true);
@@ -441,16 +534,14 @@ export default function App() {
     }
   };
 
-  const stopAreaMode = () => { setAreaMode(false); setAreaQueue([]); setAreaPointIndex(0); };
-  const stopRandomMode = () => { setRandomMode(false); };
+  const stopAreaMode = () => { startManualMode(); };
+  const stopRandomMode = () => { startManualMode(); };
 
   const sortedPoints = [...points].sort((a, b) => a.name.localeCompare(b.name));
   
-  // 1. Aleatório (ou Padrão)
   const missingPoints = sortedPoints.filter(p => !guessed.includes(p.id));
   const answeredPoints = sortedPoints.filter(p => guessed.includes(p.id));
 
-  // 2. Modo Áreas
   const pointsInAnyArea = new Set();
   Object.values(AREAS).forEach(names => {
       names.forEach(name => {
@@ -519,6 +610,12 @@ export default function App() {
 
       {currentPoint && (
         <div style={{ position: 'absolute', top: '80px', left: '16px', background: 'white', padding: '8px', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', width: 'auto', maxWidth: '220px' }}>
+          
+          {/* Informação sobre a Área do Ponto */}
+          <div style={{ fontSize: '11px', color: '#666', marginBottom: 2, fontStyle: 'italic' }}>
+            {getPointInfo(currentPoint)}
+          </div>
+
           <label style={{ fontWeight: 'bold', fontSize: 13 }}>Nome do ponto</label>
           <input type="text" value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} style={{ padding:'6px', borderRadius:4, border:'1px solid #ccc', width: '100%', boxSizing: 'border-box' }} autoFocus />
           <div style={{ display:'flex', gap:8 }}>
@@ -546,6 +643,21 @@ export default function App() {
           boxSizing: 'border-box'
       }}>
         
+        {/* Botão Manual */}
+        <div 
+          onClick={startManualMode} 
+          style={{ 
+            display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '6px 10px', 
+            border: (!randomMode && !areaMode) ? '2px solid #4caf50' : '1px solid #ccc',
+            borderRadius: '6px',
+            backgroundColor: (!randomMode && !areaMode) ? '#e8f5e9' : 'transparent',
+            transition: 'all 0.2s',
+            flexShrink: 0
+          }}
+        >
+          <b>Manual</b>
+        </div>
+
         <div 
           onClick={() => { if(randomMode) stopRandomMode(); else startRandomMode(); }} 
           style={{ 
