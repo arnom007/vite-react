@@ -123,8 +123,10 @@ export default function App() {
   
   const [showKey, setShowKey] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+  const [showFullInstructions, setShowFullInstructions] = useState(false); // Novo estado
   const [hintTrigger, setHintTrigger] = useState(0);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [feedback, setFeedback] = useState(null); // Novo estado para erro: 'error' | null
 
   const [selectedArea, setSelectedArea] = useState('Capricornio');
   const areaList = Object.keys(AREAS);
@@ -320,6 +322,7 @@ export default function App() {
               e.stopPropagation();
               setCurrentPoint(point);
               setAnswer('');
+              setFeedback(null);
             });
 
             const marker = new maplibregl.Marker({ 
@@ -436,6 +439,97 @@ export default function App() {
     });
   }, [guessed, currentPoint, showKey, blindMode, hintTrigger, isMapLoaded]);
 
+  // Lista ordenada alfabeticamente para navegação consistente
+  const sortedPoints = [...points].sort((a, b) => a.name.localeCompare(b.name));
+
+  const moveToNextPoint = () => {
+      if (!currentPoint) return;
+      
+      let nextPoint = null;
+
+      if (areaMode) {
+          // Lógica de Área
+          if (randomAreaSequence) {
+              // Próximo aleatório não respondido na área
+              const updated = [...guessed, currentPoint.id];
+              const remainingInArea = areaQueue.filter(id => !updated.includes(id));
+              if (remainingInArea.length > 0) {
+                  const randId = remainingInArea[Math.floor(Math.random() * remainingInArea.length)];
+                  nextPoint = points.find(p => p.id === randId);
+              }
+          } else {
+              // Próximo na fila da área
+              const currentIndexInQueue = areaQueue.indexOf(currentPoint.id);
+              if (currentIndexInQueue >= 0 && currentIndexInQueue < areaQueue.length - 1) {
+                  nextPoint = points.find(p => p.id === areaQueue[currentIndexInQueue + 1]);
+                  setAreaPointIndex(currentIndexInQueue + 1);
+              }
+          }
+      } else {
+          // Lógica Manual/Aleatório (Segue ordem alfabética global)
+          const currentIndex = sortedPoints.findIndex(p => p.id === currentPoint.id);
+          if (currentIndex >= 0 && currentIndex < sortedPoints.length - 1) {
+              nextPoint = sortedPoints[currentIndex + 1];
+          } else if (currentIndex === sortedPoints.length - 1) {
+              nextPoint = sortedPoints[0]; // Loop
+          }
+      }
+
+      if (nextPoint) {
+          setCurrentPoint(nextPoint);
+          setAnswer('');
+          setFeedback(null);
+          if (map.current) map.current.flyTo({ center: nextPoint.coords });
+      }
+  };
+
+  const moveToPrevPoint = () => {
+      if (!currentPoint) return;
+      let prevPoint = null;
+
+      if (areaMode && !randomAreaSequence) {
+          const currentIndexInQueue = areaQueue.indexOf(currentPoint.id);
+          if (currentIndexInQueue > 0) {
+              prevPoint = points.find(p => p.id === areaQueue[currentIndexInQueue - 1]);
+              setAreaPointIndex(currentIndexInQueue - 1);
+          }
+      } else if (!areaMode) {
+          const currentIndex = sortedPoints.findIndex(p => p.id === currentPoint.id);
+          if (currentIndex > 0) {
+              prevPoint = sortedPoints[currentIndex - 1];
+          } else if (currentIndex === 0) {
+              prevPoint = sortedPoints[sortedPoints.length - 1]; // Loop
+          }
+      }
+
+      if (prevPoint) {
+          setCurrentPoint(prevPoint);
+          setAnswer('');
+          setFeedback(null);
+          if (map.current) map.current.flyTo({ center: prevPoint.coords });
+      }
+  };
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+      const handleKeyDown = (e) => {
+          // Enter is handled on Input
+          if (e.key === 'ArrowRight') {
+              moveToNextPoint();
+          } else if (e.key === 'ArrowLeft') {
+              moveToPrevPoint();
+          } else if (e.ctrlKey && e.code === 'Space') {
+              // Só ativa se não estiver digitando
+              e.preventDefault();
+              revealAll(!showKey);
+          }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentPoint, areaMode, randomAreaSequence, areaQueue, sortedPoints, showKey]);
+
+
   const triggerHint = () => {
       setHintTrigger(prev => prev + 1);
   };
@@ -443,6 +537,7 @@ export default function App() {
   const checkAnswer = () => {
     const normalized = normalize(answer);
     if (currentPoint && currentPoint.aliases.map(a => normalize(a)).includes(normalized)) {
+      setFeedback(null);
       const updated = Array.from(new Set([...guessed, currentPoint.id]));
       setGuessed(updated);
       const rec = markersRef.current.get(currentPoint.id);
@@ -504,14 +599,15 @@ export default function App() {
         else { setCurrentPoint(null); setAnswer(''); }
       } else { setCurrentPoint(null); setAnswer(''); }
     } else {
-      alert('Errado!');
+      // Feedback Minimalista
+      setFeedback('error');
     }
   };
 
   useEffect(() => { const id = setInterval(() => setElapsedTime(Math.floor((Date.now() - startTime) / 1000)), 1000); return () => clearInterval(id); }, [startTime]);
 
   const revealAll = (show) => { setShowKey(show); markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = show ? '' : 'none'; }); };
-  const resetGame = () => { setGuessed([]); setCurrentPoint(null); setAnswer(''); setStartTime(Date.now()); setShowKey(false); if (map.current) map.current.flyTo({ center: INITIAL_CENTER, zoom: 12, pitch, bearing: bearing - MAP_DECLINATION }); markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = 'none'; }); };
+  const resetGame = () => { setGuessed([]); setCurrentPoint(null); setAnswer(''); setFeedback(null); setStartTime(Date.now()); setShowKey(false); if (map.current) map.current.flyTo({ center: INITIAL_CENTER, zoom: 12, pitch, bearing: bearing - MAP_DECLINATION }); markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = 'none'; }); };
 
   const adjustPitch = (val) => { const p = Math.max(0, Math.min(85, Number(val))); setPitch(p); if (map.current) map.current.setPitch(p); };
   const adjustBearing = (val) => { const b = (Number(val) + 360) % 360; setBearing(b); if (map.current) map.current.setBearing(b - MAP_DECLINATION); };
@@ -561,7 +657,6 @@ export default function App() {
   const stopAreaMode = () => { startManualMode(); };
   const stopRandomMode = () => { startManualMode(); };
 
-  const sortedPoints = [...points].sort((a, b) => a.name.localeCompare(b.name));
   
   const missingPoints = sortedPoints.filter(p => !guessed.includes(p.id));
   const answeredPoints = sortedPoints.filter(p => guessed.includes(p.id));
@@ -599,18 +694,51 @@ export default function App() {
 
       {showIntro && (
         <div style={{ position: 'absolute', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
-          <div style={{ background:'white', padding:'20px', borderRadius:'10px', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
-            <h3>INSTRUÇÕES:</h3>
-            <p>- Clique nas bolinhas em vermelho manualmente para responder o nome do local;<br/>
-            - Ou clique em aleatório e deixe que o mapa vá para qualquer um dos pontos faltantes;<br/>
-            - Pode ativar ou desativar a opção aleatório a qualquer momento;<br/>
-            - Pode apertar ENTER para aceitar a resposta;<br/>
-            - Marque e desmarque a opção gabarito para conferências;<br/>
-            - A lista pode te levar direto para o ponto selecionado;<br/>
-            - Recomeçar reseta seu progresso.</p>
-            <p><i>"O Senhor é o meu pastor; de nada terei falta." - Salmos 23:1</i></p>
-            <div style={{ display:'flex', justifyContent:'flex-end' }}>
-              <button onClick={() => setShowIntro(false)} style={{ marginTop:10, padding:'8px 14px', border:'none', borderRadius:6, background:'#4caf50', color:'white' }}>Começar</button>
+          <div style={{ background:'white', padding:'20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4, maxHeight: '90%', overflowY: 'auto' }}>
+            
+            <h3 style={{ marginTop: 0 }}>Atalhos do Jogo:</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', alignItems: 'center', marginBottom: 20 }}>
+                <span style={{ fontWeight: 'bold', background: '#eee', padding: '2px 6px', borderRadius: 4 }}>Enter</span>
+                <span>Confirmar resposta</span>
+
+                <span style={{ fontWeight: 'bold', background: '#eee', padding: '2px 6px', borderRadius: 4 }}>➜</span>
+                <span>Próximo ponto</span>
+
+                <span style={{ fontWeight: 'bold', background: '#eee', padding: '2px 6px', borderRadius: 4 }}>⬅</span>
+                <span>Ponto anterior</span>
+
+                <span style={{ fontWeight: 'bold', background: '#eee', padding: '2px 6px', borderRadius: 4 }}>Ctrl + Espaço</span>
+                <span>Alternar gabarito</span>
+            </div>
+
+            <p style={{ fontStyle: 'italic', borderTop: '1px solid #eee', paddingTop: 10 }}>
+                "O SENHOR é o meu pastor; nada me faltará." - Salmo 23.1
+            </p>
+
+            {/* Toggle de Instruções Completas */}
+            <div style={{ borderTop: '1px solid #eee', paddingTop: 10 }}>
+                <button 
+                    onClick={() => setShowFullInstructions(!showFullInstructions)}
+                    style={{ background: 'none', border: 'none', color: '#2196f3', cursor: 'pointer', padding: 0, fontWeight: 'bold', fontSize: 13 }}
+                >
+                    {showFullInstructions ? 'Ocultar instruções detalhadas ▲' : 'Ver instruções detalhadas ▼'}
+                </button>
+
+                {showFullInstructions && (
+                    <div style={{ marginTop: 10, fontSize: 13, color: '#555' }}>
+                        <p>- Clique nas bolinhas em vermelho manualmente para responder o nome do local;<br/>
+                        - Ou clique em aleatório e deixe que o mapa vá para qualquer um dos pontos faltantes;<br/>
+                        - Pode ativar ou desativar a opção aleatório a qualquer momento;<br/>
+                        - Pode apertar ENTER para aceitar a resposta;<br/>
+                        - Marque e desmarque a opção gabarito para conferências;<br/>
+                        - A lista pode te levar direto para o ponto selecionado;<br/>
+                        - Recomeçar reseta seu progresso.</p>
+                    </div>
+                )}
+            </div>
+
+            <div style={{ display:'flex', justifyContent:'flex-end', marginTop: 20 }}>
+              <button onClick={() => setShowIntro(false)} style={{ padding:'10px 20px', border:'none', borderRadius:6, background:'#4caf50', color:'white', fontSize: 16, cursor: 'pointer' }}>Começar</button>
             </div>
           </div>
         </div>
@@ -640,13 +768,26 @@ export default function App() {
           </div>
 
           <label style={{ fontWeight: 'bold', fontSize: 13 }}>Nome do ponto</label>
-          <input type="text" value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} style={{ padding:'6px', borderRadius:4, border:'1px solid #ccc', width: '100%', boxSizing: 'border-box' }} autoFocus />
+          <input 
+            type="text" 
+            value={answer} 
+            onChange={(e) => { setAnswer(e.target.value); if(feedback) setFeedback(null); }} 
+            onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} 
+            style={{ padding:'6px', borderRadius:4, border: feedback === 'error' ? '1px solid red' : '1px solid #ccc', width: '100%', boxSizing: 'border-box' }} 
+            autoFocus 
+          />
+          
+          {feedback === 'error' && (
+              <div style={{ color: 'red', fontSize: '11px', marginTop: -4, fontWeight: 'bold' }}>Incorreto</div>
+          )}
+
           <div style={{ display:'flex', gap:8 }}>
             <button onClick={checkAnswer} style={{ padding:'6px 12px', borderRadius:4, backgroundColor:'#4caf50', color:'white', border:'none', width: '100%', cursor:'pointer' }}>Responder</button>
           </div>
         </div>
       )}
 
+      {/* Resto do JSX da barra inferior (mantido igual) */}
       <div className="scrollbar-hide" style={{ 
           position:'absolute', 
           bottom:0, 
