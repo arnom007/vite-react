@@ -4,7 +4,7 @@ import maplibregl from "maplibre-gl";
 const MAPTILER_KEY = "YHlTRP429Wo5PZXGJklr";
 const MAP_STYLE = `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`;
 
-// Coordenadas Iniciais: 21°59'13"S 47°20'14"W
+// Coordenadas Iniciais atualizadas: 21°59'13"S 47°20'14"W
 const INITIAL_CENTER = [-47.3372, -21.9869];
 
 const points = [
@@ -45,7 +45,7 @@ const points = [
   { id: 'p39', name: 'Trevo Aguaí Anhanguera', aliases: ['trevo aguai anhanguera'], coords: [-47.432, -22.0383] },
   { id: 'p40', name: 'Itirapina', aliases: ['itirapina'], coords: [-47.8158, -22.2575] },
   { id: 'p41', name: 'Araraquara', aliases: ['araraquara'], coords: [-48.167, -21.7894] },
-  { id: 'p42', name: 'São Carlos', aliases: ['sao carlos'], coords: [-22.0164, -47.8903] },
+  { id: 'p42', name: 'São Carlos', aliases: ['sao carlos'], coords: [-47.8903, -22.0164] },
   { id: 'p43', name: 'Ibaté', aliases: ['ibate'], coords: [-47.9983, -21.9511] },
   { id: 'p44', name: 'Ipeúna', aliases: ['ipeuna'], coords: [-47.7114, -22.4331] },
   { id: 'p45', name: 'Morro da Antena', aliases: ['morro da antena'], coords: [-47.4836, -22.0042] },
@@ -128,7 +128,6 @@ export default function App() {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
-  // Estados de Conclusão
   const [showCompletion, setShowCompletion] = useState(false);
   const [finalTime, setFinalTime] = useState(0);
 
@@ -200,7 +199,6 @@ export default function App() {
     setAreaPointIndex(0);
   }, [selectedArea]);
 
-  // UseEffect para limites
   useEffect(() => {
     if (!isMapLoaded || !map.current) return;
 
@@ -271,9 +269,19 @@ export default function App() {
           zoom: 12,
           pitch,
           bearing: bearing - MAP_DECLINATION,
+          maxPitch: 85, 
         });
 
         map.current.on('load', () => {
+          // --- ATIVAR RELEVO 3D (TERRAIN) ---
+          map.current.addSource('terrain', {
+              "type": "raster-dem",
+              "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${MAPTILER_KEY}`,
+              "tileSize": 256
+          });
+          // Exagero reduzido para 1.1 para ser mais realista
+          map.current.setTerrain({ 'source': 'terrain', 'exaggeration': 1.1 });
+
           Object.keys(AREA_LIMITS).forEach(areaName => {
               map.current.addSource(`source-${areaName}`, {
                 'type': 'geojson',
@@ -547,7 +555,6 @@ export default function App() {
   const handleCompletion = () => {
       setFinalTime(elapsedTime);
       setShowCompletion(true);
-      // Removido setTimeout para não fechar sozinho
   };
 
   const checkAnswer = () => {
@@ -739,7 +746,7 @@ export default function App() {
               boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
               zIndex: 9999,
               textAlign: 'center',
-              pointerEvents: 'auto', // Permite clicar no botão
+              pointerEvents: 'auto',
               minWidth: '200px'
           }}>
               <button 
