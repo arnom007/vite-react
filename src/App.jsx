@@ -118,6 +118,7 @@ export default function App() {
   const [areaMode, setAreaMode] = useState(false);
   const [randomAreaSequence, setRandomAreaSequence] = useState(false);
   const [blindMode, setBlindMode] = useState(false);
+  const [showTerrain, setShowTerrain] = useState(false);
   
   const [boundaryMode, setBoundaryMode] = useState('progressive'); 
   
@@ -199,6 +200,37 @@ export default function App() {
     setAreaPointIndex(0);
   }, [selectedArea]);
 
+  // Effect to Toggle Terrain & Sky
+  useEffect(() => {
+    if (!isMapLoaded || !map.current) return;
+    if (showTerrain) {
+        // Ativa Relevo
+        map.current.setTerrain({ 'source': 'terrain', 'exaggeration': 1.1 });
+        
+        // Ativa Céu (CAVOK Blue / Atmosphere)
+        // Só adiciona se não existir
+        if (!map.current.getLayer('sky')) {
+            map.current.addLayer({
+                'id': 'sky',
+                'type': 'sky',
+                'paint': {
+                    'sky-type': 'atmosphere',
+                    'sky-atmosphere-sun': [0.0, 90.0],
+                    'sky-atmosphere-sun-intensity': 15
+                }
+            });
+        }
+    } else {
+        // Desativa Relevo
+        map.current.setTerrain(null);
+        
+        // Remove Céu para economizar recursos no modo default
+        if (map.current.getLayer('sky')) {
+            map.current.removeLayer('sky');
+        }
+    }
+  }, [showTerrain, isMapLoaded]);
+
   useEffect(() => {
     if (!isMapLoaded || !map.current) return;
 
@@ -273,14 +305,12 @@ export default function App() {
         });
 
         map.current.on('load', () => {
-          // --- ATIVAR RELEVO 3D (TERRAIN) ---
+          // --- CONFIGURAR FONTE DE RELEVO 3D (TERRAIN) ---
           map.current.addSource('terrain', {
               "type": "raster-dem",
               "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${MAPTILER_KEY}`,
               "tileSize": 256
           });
-          // Exagero reduzido para 1.1 para ser mais realista
-          map.current.setTerrain({ 'source': 'terrain', 'exaggeration': 1.1 });
 
           Object.keys(AREA_LIMITS).forEach(areaName => {
               map.current.addSource(`source-${areaName}`, {
@@ -1083,6 +1113,11 @@ export default function App() {
 
         <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, flexShrink: 0 }}>
           <input type="checkbox" checked={showKey} onChange={(e)=> revealAll(e.target.checked)} /> Gabarito
+        </label>
+
+        {/* New Checkbox */}
+        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, flexShrink: 0 }}>
+          <input type="checkbox" checked={showTerrain} onChange={(e)=> setShowTerrain(e.target.checked)} /> Relevo
         </label>
       </div>
     </div>
