@@ -45,7 +45,7 @@ const points = [
   { id: 'p39', name: 'Trevo Aguaí Anhanguera', aliases: ['trevo aguai anhanguera'], coords: [-47.432, -22.0383] },
   { id: 'p40', name: 'Itirapina', aliases: ['itirapina'], coords: [-47.8158, -22.2575] },
   { id: 'p41', name: 'Araraquara', aliases: ['araraquara'], coords: [-48.167, -21.7894] },
-  { id: 'p42', name: 'São Carlos', aliases: ['sao carlos'], coords: [-47.8903, -22.0164] },
+  { id: 'p42', name: 'São Carlos', aliases: ['sao carlos'], coords: [-22.0164, -47.8903] },
   { id: 'p43', name: 'Ibaté', aliases: ['ibate'], coords: [-47.9983, -21.9511] },
   { id: 'p44', name: 'Ipeúna', aliases: ['ipeuna'], coords: [-47.7114, -22.4331] },
   { id: 'p45', name: 'Morro da Antena', aliases: ['morro da antena'], coords: [-47.4836, -22.0042] },
@@ -119,10 +119,12 @@ export default function App() {
   const [randomAreaSequence, setRandomAreaSequence] = useState(false);
   const [blindMode, setBlindMode] = useState(false);
   
+  const [boundaryMode, setBoundaryMode] = useState('progressive'); 
+  
   const [showKey, setShowKey] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const [hintTrigger, setHintTrigger] = useState(0);
-  const [isMapLoaded, setIsMapLoaded] = useState(false); // Novo estado
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
 
   const [selectedArea, setSelectedArea] = useState('Capricornio');
   const areaList = Object.keys(AREAS);
@@ -180,6 +182,61 @@ export default function App() {
   }, [selectedArea]);
 
   useEffect(() => {
+    if (!isMapLoaded || !map.current) return;
+
+    Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => {
+        const source = map.current.getSource(`source-${areaName}`);
+        if (!source) return;
+
+        const limitIds = limitNames.map(name => nameToPointId(name)).filter(Boolean);
+        
+        if (limitIds.length < 2) {
+             source.setData({ type: 'FeatureCollection', features: [] });
+             return;
+        }
+
+        const segments = [];
+
+        for (let i = 0; i < limitIds.length; i++) {
+            const id1 = limitIds[i];
+            const id2 = limitIds[(i + 1) % limitIds.length];
+
+            const p1 = points.find(p => p.id === id1);
+            const p2 = points.find(p => p.id === id2);
+
+            if (p1 && p2) {
+                let isVisible = false;
+
+                if (boundaryMode === 'all') {
+                    isVisible = true;
+                } else if (boundaryMode === 'none') {
+                    isVisible = false;
+                } else if (boundaryMode === 'progressive') {
+                    const isP1Guessed = guessed.includes(id1);
+                    const isP2Guessed = guessed.includes(id2);
+                    isVisible = isP1Guessed && isP2Guessed;
+                }
+
+                if (isVisible) {
+                    segments.push([p1.coords, p2.coords]);
+                }
+            }
+        }
+
+        const geoJson = {
+            'type': 'Feature',
+            'geometry': {
+                'type': 'MultiLineString',
+                'coordinates': segments
+            }
+        };
+
+        source.setData(geoJson);
+    });
+
+  }, [isMapLoaded, guessed, boundaryMode]);
+
+  useEffect(() => {
     if (map.current) return;
 
     const initMap = async () => {
@@ -197,18 +254,10 @@ export default function App() {
         });
 
         map.current.on('load', () => {
-          Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => {
-            const coords = limitNames.map(name => {
-              const pid = nameToPointId(name);
-              const p = points.find(pt => pt.id === pid);
-              return p ? p.coords : null;
-            }).filter(Boolean);
-
-            if (coords.length > 2) {
-              coords.push(coords[0]);
+          Object.keys(AREA_LIMITS).forEach(areaName => {
               map.current.addSource(`source-${areaName}`, {
                 'type': 'geojson',
-                'data': { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': coords } }
+                'data': { 'type': 'FeatureCollection', 'features': [] }
               });
               map.current.addLayer({
                 'id': `layer-${areaName}`,
@@ -217,20 +266,18 @@ export default function App() {
                 'layout': { 'line-join': 'round', 'line-cap': 'round' },
                 'paint': { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0.3 }
               });
-            }
           });
 
           points.forEach(point => {
             const el = document.createElement('div');
             el.className = 'marker-root';
-            // IMPORTANTE: overflow visible e tamanho 0 para não bugar o posicionamento
             el.style.width = '0px'; 
             el.style.height = '0px';
             el.style.display = 'flex';
             el.style.alignItems = 'center';
             el.style.justifyContent = 'center';
             el.style.flexShrink = '0';
-            el.style.overflow = 'visible'; // Correção chave para bolinhas visíveis
+            el.style.overflow = 'visible'; 
             
             const content = document.createElement('div');
             content.className = 'marker-content';
@@ -309,7 +356,7 @@ export default function App() {
             markersRef.current.set(point.id, { marker, content, dot, hint, labelMarker, labelEl, point });
           });
 
-          setIsMapLoaded(true); // Aciona o useEffect de atualização visual
+          setIsMapLoaded(true);
 
           map.current.on('move', () => {
             if (!map.current) return;
@@ -338,7 +385,6 @@ export default function App() {
     };
   }, []);
 
-  // Lógica de Atualização Visual (Agora depende de isMapLoaded)
   useEffect(() => {
     if (!isMapLoaded) return;
 
@@ -356,7 +402,6 @@ export default function App() {
 
       dot.style.backgroundColor = color;
 
-      // Blind Mode Logic
       if (blindMode) {
           content.style.width = '80px';
           content.style.height = '80px';
@@ -367,7 +412,6 @@ export default function App() {
           dot.style.opacity = '1';
       }
 
-      // Hint Logic
       if (hint) {
           if (isCurrent && hintTrigger > 0) {
               hint.classList.remove('animate-pulse-hint');
@@ -681,6 +725,7 @@ export default function App() {
             <b>Às Cegas</b>
         </label>
 
+        {/* Botão Dica (aparece se blindMode) */}
         <button
             onClick={triggerHint}
             style={{
@@ -700,6 +745,46 @@ export default function App() {
         >
             Dica
         </button>
+
+        {/* Boundary Control - Moved here */}
+        <div style={{ display:'flex', alignItems: 'center', flexShrink: 0, border: '1px solid #ffcc80', borderRadius: 6, overflow: 'hidden', height: '28px', backgroundColor: 'white' }}>
+            <div style={{ padding: '0 8px', fontSize: 11, background: '#fff3e0', color: '#e65100', display: 'flex', alignItems: 'center', height: '100%', fontWeight: 'bold', borderRight: '1px solid #ffcc80' }}>
+                Limites
+            </div>
+            <div
+                onClick={() => setBoundaryMode('all')}
+                style={{
+                    padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center',
+                    backgroundColor: boundaryMode === 'all' ? '#ffe0b2' : 'white',
+                    fontWeight: boundaryMode === 'all' ? 'bold' : 'normal',
+                    borderRight: '1px solid #ffcc80', color: '#e65100'
+                }}
+            >
+                Todos
+            </div>
+            <div
+                onClick={() => setBoundaryMode('progressive')}
+                style={{
+                    padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center',
+                    backgroundColor: boundaryMode === 'progressive' ? '#ffe0b2' : 'white',
+                    fontWeight: boundaryMode === 'progressive' ? 'bold' : 'normal',
+                    borderRight: '1px solid #ffcc80', color: '#e65100'
+                }}
+            >
+                Progr.
+            </div>
+            <div
+                onClick={() => setBoundaryMode('none')}
+                style={{
+                    padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center',
+                    backgroundColor: boundaryMode === 'none' ? '#ffe0b2' : 'white',
+                    fontWeight: boundaryMode === 'none' ? 'bold' : 'normal',
+                    color: '#e65100'
+                }}
+            >
+                Off
+            </div>
+        </div>
 
         <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto', flexShrink: 0 }}>Recomeçar</button>
 
