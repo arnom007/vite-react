@@ -45,7 +45,7 @@ const points = [
   { id: 'p39', name: 'Trevo Aguaí Anhanguera', aliases: ['trevo aguai anhanguera'], coords: [-47.432, -22.0383] },
   { id: 'p40', name: 'Itirapina', aliases: ['itirapina'], coords: [-47.8158, -22.2575] },
   { id: 'p41', name: 'Araraquara', aliases: ['araraquara'], coords: [-48.167, -21.7894] },
-  { id: 'p42', name: 'São Carlos', aliases: ['sao carlos'], coords: [-22.0164, -47.8903] },
+  { id: 'p42', name: 'São Carlos', aliases: ['sao carlos'], coords: [-47.8903, -22.0164] },
   { id: 'p43', name: 'Ibaté', aliases: ['ibate'], coords: [-47.9983, -21.9511] },
   { id: 'p44', name: 'Ipeúna', aliases: ['ipeuna'], coords: [-47.7114, -22.4331] },
   { id: 'p45', name: 'Morro da Antena', aliases: ['morro da antena'], coords: [-47.4836, -22.0042] },
@@ -85,7 +85,6 @@ const AREAS = {
   ]
 };
 
-// Definição dos Limites (Fronteiras)
 const AREA_LIMITS = {
   Capricornio: [
     'Trevo Aguaí Anhanguera', 'Leme', 'Araras', 'Cordeirópolis', 'Ipeúna', 'Lagoa na SP-225', 'Itirapina', 'Analândia'
@@ -115,7 +114,6 @@ export default function App() {
   const [pitch, setPitch] = useState(60);
   const [bearing, setBearing] = useState(130);
   
-  // Modos
   const [randomMode, setRandomMode] = useState(false);
   const [areaMode, setAreaMode] = useState(false);
   const [randomAreaSequence, setRandomAreaSequence] = useState(false);
@@ -124,6 +122,7 @@ export default function App() {
   const [showKey, setShowKey] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const [hintTrigger, setHintTrigger] = useState(0);
+  const [isMapLoaded, setIsMapLoaded] = useState(false); // Novo estado
 
   const [selectedArea, setSelectedArea] = useState('Capricornio');
   const areaList = Object.keys(AREAS);
@@ -131,7 +130,6 @@ export default function App() {
   const [areaPointIndex, setAreaPointIndex] = useState(0);
   const [areaQueue, setAreaQueue] = useState([]);
 
-  // Helper para normalizar nomes
   const normalize = (s) => {
     try { return String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
     catch (e) { return String(s || '').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
@@ -143,22 +141,15 @@ export default function App() {
     return p ? p.id : null;
   };
 
-  // Helper para encontrar limites e informações do ponto atual
   const getPointInfo = (point) => {
     if (!point) return "";
-    
     let infoParts = [];
     const pId = point.id;
-    
     Object.entries(AREAS).forEach(([areaName, areaPointsNames]) => {
-      // Verifica se o ponto pertence à área
       const isInArea = areaPointsNames.map(n => nameToPointId(n)).includes(pId);
-      
       if (isInArea) {
-        // Verifica se é limite dessa área
         const limits = AREA_LIMITS[areaName] || [];
         const isLimit = limits.map(n => nameToPointId(n)).includes(pId);
-        
         if (isLimit) {
           infoParts.push(`Limite da área de ${areaName}`);
         } else {
@@ -166,8 +157,6 @@ export default function App() {
         }
       }
     });
-
-    // Remove duplicatas e formata
     const uniqueInfo = [...new Set(infoParts)];
     if (uniqueInfo.length === 0) return "Ponto Isolado";
     return uniqueInfo.join(" | ");
@@ -208,7 +197,6 @@ export default function App() {
         });
 
         map.current.on('load', () => {
-          // --- DESENHAR LIMITES DE ÁREAS (POLÍGONOS) ---
           Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => {
             const coords = limitNames.map(name => {
               const pid = nameToPointId(name);
@@ -217,47 +205,32 @@ export default function App() {
             }).filter(Boolean);
 
             if (coords.length > 2) {
-              // Fechar o polígono
               coords.push(coords[0]);
-
               map.current.addSource(`source-${areaName}`, {
                 'type': 'geojson',
-                'data': {
-                  'type': 'Feature',
-                  'geometry': {
-                    'type': 'LineString',
-                    'coordinates': coords
-                  }
-                }
+                'data': { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': coords } }
               });
-
               map.current.addLayer({
                 'id': `layer-${areaName}`,
                 'type': 'line',
                 'source': `source-${areaName}`,
-                'layout': {
-                  'line-join': 'round',
-                  'line-cap': 'round'
-                },
-                'paint': {
-                  'line-color': '#ffffff',
-                  'line-width': 2,
-                  'line-opacity': 0.3
-                }
+                'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                'paint': { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0.3 }
               });
             }
           });
 
-          // --- ADICIONAR PONTOS ---
           points.forEach(point => {
             const el = document.createElement('div');
             el.className = 'marker-root';
+            // IMPORTANTE: overflow visible e tamanho 0 para não bugar o posicionamento
             el.style.width = '0px'; 
             el.style.height = '0px';
             el.style.display = 'flex';
             el.style.alignItems = 'center';
             el.style.justifyContent = 'center';
-            el.style.flexShrink = '0'; 
+            el.style.flexShrink = '0';
+            el.style.overflow = 'visible'; // Correção chave para bolinhas visíveis
             
             const content = document.createElement('div');
             content.className = 'marker-content';
@@ -336,6 +309,8 @@ export default function App() {
             markersRef.current.set(point.id, { marker, content, dot, hint, labelMarker, labelEl, point });
           });
 
+          setIsMapLoaded(true); // Aciona o useEffect de atualização visual
+
           map.current.on('move', () => {
             if (!map.current) return;
             const p = Math.round(map.current.getPitch());
@@ -363,7 +338,10 @@ export default function App() {
     };
   }, []);
 
+  // Lógica de Atualização Visual (Agora depende de isMapLoaded)
   useEffect(() => {
+    if (!isMapLoaded) return;
+
     markersRef.current.forEach((rec, id) => {
       const { content, dot, hint, labelEl, labelMarker, point } = rec;
       if (!dot || !content) return;
@@ -378,6 +356,7 @@ export default function App() {
 
       dot.style.backgroundColor = color;
 
+      // Blind Mode Logic
       if (blindMode) {
           content.style.width = '80px';
           content.style.height = '80px';
@@ -388,6 +367,7 @@ export default function App() {
           dot.style.opacity = '1';
       }
 
+      // Hint Logic
       if (hint) {
           if (isCurrent && hintTrigger > 0) {
               hint.classList.remove('animate-pulse-hint');
@@ -410,7 +390,7 @@ export default function App() {
         }
       }
     });
-  }, [guessed, currentPoint, showKey, blindMode, hintTrigger]);
+  }, [guessed, currentPoint, showKey, blindMode, hintTrigger, isMapLoaded]);
 
   const triggerHint = () => {
       setHintTrigger(prev => prev + 1);
@@ -611,7 +591,6 @@ export default function App() {
       {currentPoint && (
         <div style={{ position: 'absolute', top: '80px', left: '16px', background: 'white', padding: '8px', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', width: 'auto', maxWidth: '220px' }}>
           
-          {/* Informação sobre a Área do Ponto */}
           <div style={{ fontSize: '11px', color: '#666', marginBottom: 2, fontStyle: 'italic' }}>
             {getPointInfo(currentPoint)}
           </div>
@@ -643,7 +622,6 @@ export default function App() {
           boxSizing: 'border-box'
       }}>
         
-        {/* Botão Manual */}
         <div 
           onClick={startManualMode} 
           style={{ 
