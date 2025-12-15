@@ -200,20 +200,15 @@ export default function App() {
     setAreaPointIndex(0);
   }, [selectedArea]);
 
-  // Effect to Toggle Terrain & Sky (Simple)
+  // Effect to Toggle Terrain ONLY (No Sky)
   useEffect(() => {
     if (!isMapLoaded || !map.current) return;
     if (showTerrain) {
         // Ativa Relevo
         map.current.setTerrain({ 'source': 'terrain', 'exaggeration': 1.1 });
-        
-        // COR ESTÁTICA PARA O CÉU (Super leve)
-        map.current.setPaintProperty('background', 'background-color', '#87CEEB'); // SkyBlue
     } else {
         // Desativa Relevo
         map.current.setTerrain(null);
-        // Reseta cor de fundo (geralmente preto ou transparente no satélite)
-        map.current.setPaintProperty('background', 'background-color', '#000000');
     }
   }, [showTerrain, isMapLoaded]);
 
@@ -291,17 +286,7 @@ export default function App() {
         });
 
         map.current.on('load', () => {
-          // Adiciona camada de Background se não existir no estilo original
-          if (!map.current.getLayer('background')) {
-             map.current.addLayer({
-                 'id': 'background',
-                 'type': 'background',
-                 'paint': {
-                     'background-color': '#000000'
-                 }
-             }, map.current.getStyle().layers[0].id); // Coloca bem no fundo
-          }
-
+          // --- CONFIGURAR FONTE DE RELEVO 3D (TERRAIN) ---
           map.current.addSource('terrain', {
               "type": "raster-dem",
               "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${MAPTILER_KEY}`,
