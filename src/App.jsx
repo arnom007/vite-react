@@ -90,11 +90,44 @@ const AREAS = {
   'Tráfego AFA': getPointsByKeyword('Tráfego AFA')
 };
 
+// DEFINIÇÃO MANUAL DA SEQUÊNCIA DE LIMITES PARA O DESENHO CORRETO
 const AREA_LIMITS = {
-  Capricornio: points.filter(p => normalize(p.info).includes('limite') && normalize(p.info).includes('capricornio')).map(p => p.name),
-  Aquarius: points.filter(p => normalize(p.info).includes('limite') && normalize(p.info).includes('aquarius')).map(p => p.name),
-  Peixes: points.filter(p => normalize(p.info).includes('limite') && normalize(p.info).includes('peixes')).map(p => p.name),
-  Taurus: points.filter(p => normalize(p.info).includes('limite') && normalize(p.info).includes('taurus')).map(p => p.name)
+  Capricornio: [
+    'Trevo Aguaí Anhanguera', 
+    'Leme', 
+    'Araras', 
+    'Cordeirópolis', 
+    'Ipeúna', 
+    'Lagoa na SP-225', 
+    'Itirapina', 
+    'Analândia'
+  ],
+  Aquarius: [
+    'Trevo Aguaí Anhanguera', 
+    'Analândia', 
+    'Itirapina', 
+    'Lagoa na SP-225', 
+    'Fazenda Brotas', 
+    'Américo Brasiliense', 
+    'Descalvado', 
+    'Porto Ferreira'
+  ],
+  Peixes: [
+    'Porto Ferreira', 
+    'Pedágio São Simão', 
+    'Rincão', 
+    'Américo Brasiliense', 
+    'Descalvado'
+  ],
+  Taurus: [
+    'Porto Ferreira', 
+    'Pedágio São Simão', 
+    'Santa Cruz da Esperança', 
+    'Fazenda da Serra', 
+    'Mococa', 
+    'Santa Rosa do Viterbo', 
+    'Santa Rita do Passa Quatro'
+  ]
 };
 
 
