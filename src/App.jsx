@@ -4,101 +4,99 @@ import maplibregl from "maplibre-gl";
 const MAPTILER_KEY = "YHlTRP429Wo5PZXGJklr";
 const MAP_STYLE = `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`;
 
-// Coordenadas Iniciais atualizadas: 21°59'13"S 47°20'14"W
-const INITIAL_CENTER = [-47.3372, -21.9869];
+// Coordenadas Iniciais (Mantidas ou ajustadas para um ponto central médio)
+const INITIAL_CENTER = [-47.6, -22.0];
 
+// Dados extraídos da sua tabela atualizada
 const points = [
-  { id: 'p1', name: 'Júpiter', aliases: ['jupiter'], coords: [-47.45, -21.9878] },
-  { id: 'p2', name: 'Prédios Brancos', aliases: ['predios brancos'], coords: [-47.4142, -21.9872] },
-  { id: 'p3', name: 'Trevo', aliases: ['trevo'], coords: [-47.3975, -22.0106] },
-  { id: 'p8', name: 'FAZ DA TOCA 2700', aliases: ['faz da toca 2700'], coords: [-47.7033, -22.2456] },
-  { id: 'p9', name: 'Engenho', aliases: ['engenho'], coords: [-47.3653, -22.0378] },
-  { id: 'p10', name: 'Analândia 2800', aliases: ['analandia 2800'], coords: [-47.7192, -22.1567] },
-  { id: 'p11', name: 'Itirapina 2600', aliases: ['itirapina 2600'], coords: [-47.8614, -22.1942] },
-  { id: 'p12', name: 'Rio Claro 2000', aliases: ['rio claro 2000'], coords: [-47.5619, -22.4306] },
-  { id: 'p13', name: 'Araras 2200', aliases: ['araras 2200'], coords: [-47.3586, -22.3389] },
-  { id: 'p14', name: 'Leme 2000', aliases: ['leme 2000'], coords: [-47.3814, -22.2261] },
-  { id: 'p15', name: 'São Carlos 2600', aliases: ['sao carlos 2600'], coords: [-47.9036, -21.8744] },
-  { id: 'p16', name: 'Faz da Barra 2300', aliases: ['faz da barra 2300'], coords: [-47.7758, -21.8814] },
-  { id: 'p17', name: 'Usina Ipiranga 2500', aliases: ['usina ipiranga 2500'], coords: [-47.7339, -21.8336] },
-  { id: 'p18', name: 'Faz Álamo 2400', aliases: ['faz alamo 2400'], coords: [-47.90083, -21.81528] },
-  { id: 'p19', name: 'Faz Pixoxó 2100', aliases: ['faz pixoxo 2100'], coords: [-47.88306, -21.78] },
-  { id: 'p20', name: 'Araraquara 2300', aliases: ['araraquara 2300'], coords: [-48.1333, -21.8111] },
-  { id: 'p21', name: 'Área Vermelha 2100', aliases: ['area vermelha 2100'], coords: [-47.6575, -21.7253] },
-  { id: 'p22', name: 'Santa Rita do Passa Quatro 2800', aliases: ['santa rita do passa quatro 2800'], coords: [-47.47, -21.6425] },
-  { id: 'p23', name: 'Lagoa do Aeroclube', aliases: ['lagoa do aeroclube'], coords: [-47.4233, -22.0403] },
-  { id: 'p24', name: 'Matão', aliases: ['matao'], coords: [-48.3583, -21.6075] },
-  { id: 'p25', name: 'Cravinhos', aliases: ['cravinhos'], coords: [-47.7278, -21.3286] },
-  { id: 'p26', name: 'Cajuru', aliases: ['cajuru'], coords: [-47.3058, -21.2731] },
-  { id: 'p27', name: 'Mococa', aliases: ['mococa'], coords: [-47.0003, -21.4756] },
-  { id: 'p28', name: 'Santa Rosa do Viterbo', aliases: ['santa rosa do viterbo'], coords: [-47.3661, -21.501] },
-  { id: 'p29', name: 'Santa Rita do Passa Quatro', aliases: ['santa rita do passa quatro'], coords: [-47.4803, -21.7086] },
-  { id: 'p30', name: 'Porto Ferreira', aliases: ['porto ferreira'], coords: [-47.4833, -21.857] },
-  { id: 'p31', name: 'Leme', aliases: ['leme'], coords: [-47.3847, -22.1811] },
-  { id: 'p32', name: 'Brotas', aliases: ['brotas'], coords: [-48.1253, -22.2861] },
-  { id: 'p33', name: 'Iracemópolis', aliases: ['iracemopolis'], coords: [-47.5197, -22.5872] },
-  { id: 'p34', name: 'Cordeirópolis', aliases: ['cordeiropolis'], coords: [-47.4578, -22.4822] },
-  { id: 'p35', name: 'Rio Claro', aliases: ['rio claro'], coords: [-47.5636, -22.4042] },
-  { id: 'p36', name: 'Araras', aliases: ['araras'], coords: [-47.3811, -22.3647] },
-  { id: 'p37', name: 'Santa Cruz da Conceição', aliases: ['santa cruz da conceicao'], coords: [-47.4517, -22.1378] },
-  { id: 'p38', name: 'Analândia', aliases: ['analandia'], coords: [-47.6611, -22.1294] },
-  { id: 'p39', name: 'Trevo Aguaí Anhanguera', aliases: ['trevo aguai anhanguera'], coords: [-47.432, -22.0383] },
-  { id: 'p40', name: 'Itirapina', aliases: ['itirapina'], coords: [-47.8158, -22.2575] },
-  { id: 'p41', name: 'Araraquara', aliases: ['araraquara'], coords: [-48.167, -21.7894] },
-  { id: 'p42', name: 'São Carlos', aliases: ['sao carlos'], coords: [-47.8903, -22.0164] },
-  { id: 'p43', name: 'Ibaté', aliases: ['ibate'], coords: [-47.9983, -21.9511] },
-  { id: 'p44', name: 'Ipeúna', aliases: ['ipeuna'], coords: [-47.7114, -22.4331] },
-  { id: 'p45', name: 'Morro da Antena', aliases: ['morro da antena'], coords: [-47.4836, -22.0042] },
-  { id: 'p46', name: 'Ponta W Vila SGT', aliases: ['ponta w vila sgt'], coords: [-47.3697, -21.9906] },
-  { id: 'p47', name: 'Ponte Velha', aliases: ['ponte velha'], coords: [-47.3683, -21.9261] },
-  { id: 'p49', name: 'Lagoa na SP-225', aliases: ['lagoa na sp-225'], coords: [-48.0144, -22.2878] },
-  { id: 'p50', name: 'Fazenda Brotas', aliases: ['fazenda brotas'], coords: [-48.0544, -22.235] },
-  { id: 'p51', name: 'Rincão', aliases: ['rincao'], coords: [-48.0722, -21.5878] },
-  { id: 'p52', name: 'Pedágio São Simão', aliases: ['pedagio sao simao'], coords: [-47.6642, -21.4144] },
-  { id: 'p53', name: 'Santa Cruz da Esperança', aliases: ['santa cruz da esperanca'], coords: [-47.4283, -21.292] },
-  { id: 'p54', name: 'Fazenda da Serra', aliases: ['fazenda da serra'], coords: [-47.2111, -21.3578] },
-  { id: 'p55', name: 'Américo Brasiliense', aliases: ['americo brasiliense'], coords: [-48.1222, -21.7408] },
-  { id: 'p56', name: 'Guatapará', aliases: ['guatapara'], coords: [-48.0367, -21.4956] },
-  { id: 'p57', name: 'Corumbataí', aliases: ['corumbatai'], coords: [-47.6228, -22.2214] },
-  { id: 'p58', name: 'Luís Antônio', aliases: ['luis antonio'], coords: [-47.7008, -21.5519] },
-  { id: 'p59', name: 'São Simão', aliases: ['sao simao'], coords: [-47.5556, -21.4794] },
-  { id: 'p60', name: 'Sumidouro', aliases: ['sumidouro'], coords: [-47.3467, -21.9636] },
-  { id: 'p61', name: 'Estrada SO/SGT', aliases: ['estrada so sgt'], coords: [-47.3447, -22.0067] },
-  { id: 'p62', name: 'Descalvado', aliases: ['descalvado'], coords: [-47.6258, -21.9117] },
+  { id: 'p1', name: 'Júpiter', aliases: ['jupiter'], coords: [-47.4500, -21.9878], info: 'Ponto da área de Tráfego AFA' },
+  { id: 'p2', name: 'Prédios Brancos', aliases: ['predios brancos'], coords: [-47.4142, -21.9872], info: 'Ponto da área de Tráfego AFA' },
+  { id: 'p3', name: 'Trevo', aliases: ['trevo'], coords: [-47.3975, -22.0106], info: 'Ponto da área de Tráfego AFA' },
+  { id: 'p8', name: 'FAZ DA TOCA 2700', aliases: ['faz da toca 2700'], coords: [-47.7033, -22.2456], info: 'Tr. Traf de EMG Capricornio ⚠️' },
+  { id: 'p9', name: 'Engenho', aliases: ['engenho'], coords: [-47.3653, -22.0378], info: 'Ponto da área de Tráfego AFA' },
+  { id: 'p10', name: 'Analândia 2800', aliases: ['analandia 2800'], coords: [-47.7192, -22.1567], info: 'Tr. Traf de EMG Aquarius ⚠️' },
+  { id: 'p11', name: 'Itirapina 2600', aliases: ['itirapina 2600'], coords: [-47.8614, -22.1942], info: 'Tr. Traf de EMG Aquarius ⚠️' },
+  { id: 'p12', name: 'Rio Claro 2000', aliases: ['rio claro 2000'], coords: [-47.5619, -22.4306], info: 'Tr. Traf de EMG Capricornio ⚠️' },
+  { id: 'p13', name: 'Araras 2200', aliases: ['araras 2200'], coords: [-47.3586, -22.3389], info: 'Tr. Traf de EMG  Capricornio ⚠️' },
+  { id: 'p14', name: 'Leme 2000', aliases: ['leme 2000'], coords: [-47.3814, -22.2261], info: 'Tr. Traf de EMG Capricornio ⚠️' },
+  { id: 'p15', name: 'São Carlos 2600', aliases: ['sao carlos 2600'], coords: [-47.9036, -21.8744], info: 'Tr. Traf de EMG Aquarius ⚠️' },
+  { id: 'p16', name: 'Faz da Barra 2300', aliases: ['faz da barra 2300'], coords: [-47.7758, -21.8814], info: 'Ponto da área de Peixes' },
+  { id: 'p17', name: 'Usina Ipiranga 2500', aliases: ['usina ipiranga 2500'], coords: [-47.7339, -21.8336], info: 'Tr. Traf de EMG Peixes ⚠️' },
+  { id: 'p18', name: 'Faz Álamo 2400', aliases: ['faz alamo 2400'], coords: [-47.9008, -21.8153], info: 'Tr. Traf de EMG Peixes ⚠️' },
+  { id: 'p19', name: 'Faz Pixoxó 2100', aliases: ['faz pixoxo 2100'], coords: [-47.8831, -21.7800], info: 'Tr. Traf de EMG Peixes ⚠️' },
+  { id: 'p20', name: 'Araraquara 2300', aliases: ['araraquara 2300'], coords: [-48.1333, -21.8111], info: 'Ponto Isolado' },
+  { id: 'p21', name: 'Área Vermelha 2100', aliases: ['area vermelha 2100'], coords: [-47.6575, -21.7253], info: 'Tr. Traf de EMG Peixes ⚠️' },
+  { id: 'p22', name: 'Santa Rita do Passa Quatro 2800', aliases: ['santa rita do passa quatro 2800'], coords: [-47.4700, -21.6425], info: 'Tr. Traf de EMG Taurus ⚠️' },
+  { id: 'p23', name: 'Lagoa do Aeroclube', aliases: ['lagoa do aeroclube'], coords: [-47.4233, -22.0403], info: 'Ponto da área de Tráfego AFA' },
+  { id: 'p24', name: 'Matão', aliases: ['matao'], coords: [-48.3583, -21.6075], info: 'Ponto Isolado' },
+  { id: 'p25', name: 'Cravinhos', aliases: ['cravinhos'], coords: [-47.7278, -21.3286], info: 'Ponto Isolado' },
+  { id: 'p26', name: 'Cajuru', aliases: ['cajuru'], coords: [-47.3058, -21.2731], info: 'Ponto Isolado' },
+  { id: 'p27', name: 'Mococa', aliases: ['mococa'], coords: [-47.0003, -21.4756], info: 'Limite da área de Taurus 📍' },
+  { id: 'p28', name: 'Santa Rosa do Viterbo', aliases: ['santa rosa do viterbo'], coords: [-47.3661, -21.5010], info: 'Limite da área de Taurus 📍' },
+  { id: 'p29', name: 'Santa Rita do Passa Quatro', aliases: ['santa rita do passa quatro'], coords: [-47.4803, -21.7086], info: 'Limite da área de Taurus 📍' },
+  { id: 'p30', name: 'Porto Ferreira', aliases: ['porto ferreira'], coords: [-47.4833, -21.8570], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Taurus 📍' },
+  { id: 'p31', name: 'Leme', aliases: ['leme'], coords: [-47.3847, -22.1811], info: 'Limite da área de Capricórnio 📍' },
+  { id: 'p32', name: 'Brotas', aliases: ['brotas'], coords: [-48.1253, -22.2861], info: 'Ponto Isolado' },
+  { id: 'p33', name: 'Iracemópolis', aliases: ['iracemopolis'], coords: [-47.5197, -22.5872], info: 'Ponto Isolado' },
+  { id: 'p34', name: 'Cordeirópolis', aliases: ['cordeiropolis'], coords: [-47.4578, -22.4822], info: 'Limite da área de Capricórnio 📍' },
+  { id: 'p35', name: 'Rio Claro', aliases: ['rio claro'], coords: [-47.5636, -22.4042], info: 'Ponto da área de Capricornio' },
+  { id: 'p36', name: 'Araras', aliases: ['araras'], coords: [-47.3811, -22.3647], info: 'Limite da área de Capricórnio 📍' },
+  { id: 'p37', name: 'Santa Cruz da Conceição', aliases: ['santa cruz da conceicao'], coords: [-47.4517, -22.1378], info: 'Ponto da área de Capricornio' },
+  { id: 'p38', name: 'Analândia', aliases: ['analandia'], coords: [-47.6611, -22.1294], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍' },
+  { id: 'p39', name: 'Trevo Aguaí Anhanguera', aliases: ['trevo aguai anhanguera'], coords: [-47.4320, -22.0383], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍 | Ponto da área de Tráfego AFA' },
+  { id: 'p40', name: 'Itirapina', aliases: ['itirapina'], coords: [-47.8158, -22.2575], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍' },
+  { id: 'p41', name: 'Araraquara', aliases: ['araraquara'], coords: [-48.1670, -21.7894], info: 'Ponto Isolado' },
+  { id: 'p42', name: 'São Carlos', aliases: ['sao carlos'], coords: [-47.8903, -22.0164], info: 'Ponto da área de Aquarius' },
+  { id: 'p43', name: 'Ibaté', aliases: ['ibate'], coords: [-47.9983, -21.9511], info: 'Ponto da área de Aquarius' },
+  { id: 'p44', name: 'Ipeúna', aliases: ['ipeuna'], coords: [-47.7114, -22.4331], info: 'Limite da área de Capricórnio 📍' },
+  { id: 'p45', name: 'Morro da Antena', aliases: ['morro da antena'], coords: [-47.4836, -22.0042], info: 'Ponto da área de Tráfego AFA' },
+  { id: 'p46', name: 'Ponta W Vila SGT', aliases: ['ponta w vila sgt'], coords: [-47.3697, -21.9906], info: 'Ponto da área de Tráfego AFA' },
+  { id: 'p47', name: 'Ponte Velha', aliases: ['ponte velha'], coords: [-47.3683, -21.9261], info: 'Ponto da área de Tráfego AFA' },
+  { id: 'p49', name: 'Lagoa na SP-225', aliases: ['lagoa na sp-225'], coords: [-48.0144, -22.2878], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍' },
+  { id: 'p50', name: 'Fazenda Brotas', aliases: ['fazenda brotas'], coords: [-48.0544, -22.2350], info: 'Limite da área de Aquárius 📍' },
+  { id: 'p51', name: 'Rincão', aliases: ['rincao'], coords: [-48.0722, -21.5878], info: 'Limite da área de Peixes 📍' },
+  { id: 'p52', name: 'Pedágio São Simão', aliases: ['pedagio sao simao'], coords: [-47.6642, -21.4144], info: 'Limite da área de Peixes 📍 | Limite da área de Taurus 📍' },
+  { id: 'p53', name: 'Santa Cruz da Esperança', aliases: ['santa cruz da esperanca'], coords: [-47.4283, -21.2920], info: 'Limite da área de Taurus 📍' },
+  { id: 'p54', name: 'Fazenda da Serra', aliases: ['fazenda da serra'], coords: [-47.2111, -21.3578], info: 'Limite da área de Taurus 📍' },
+  { id: 'p55', name: 'Américo Brasiliense', aliases: ['americo brasiliense'], coords: [-48.1222, -21.7408], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍' },
+  { id: 'p56', name: 'Guatapará', aliases: ['guatapara'], coords: [-48.0367, -21.4956], info: 'Ponto Isolado' },
+  { id: 'p57', name: 'Corumbataí', aliases: ['corumbatai'], coords: [-47.6228, -22.2214], info: 'Ponto da área de Capricornio' },
+  { id: 'p58', name: 'Luís Antônio', aliases: ['luis antonio'], coords: [-47.7008, -21.5519], info: 'Ponto da área de Peixes' },
+  { id: 'p59', name: 'São Simão', aliases: ['sao simao'], coords: [-47.5556, -21.4794], info: 'Ponto da área de Taurus' },
+  { id: 'p60', name: 'Sumidouro', aliases: ['sumidouro'], coords: [-47.3467, -21.9636], info: 'Ponto da área de Tráfego AFA' },
+  { id: 'p61', name: 'Estrada SO/SGT', aliases: ['estrada so sgt'], coords: [-47.3447, -22.0067], info: 'Ponto da área de Tráfego AFA' },
+  { id: 'p62', name: 'Descalvado', aliases: ['descalvado'], coords: [-47.6258, -21.9117], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍' },
 ];
 
+// Helper para montar as listas de Áreas e Limites automaticamente baseando-se no campo "info"
+const getPointsByKeyword = (keyword) => {
+  return points
+    .filter(p => normalize(p.info).includes(normalize(keyword)))
+    .map(p => p.name);
+};
+
+// Normalizar strings para comparação (remove acentos, minúsculas)
+const normalize = (s) => {
+  try { return String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase(); }
+  catch (e) { return String(s || '').toLowerCase(); }
+};
+
+// Definição dinâmica das áreas e limites baseada no texto do usuário
 const AREAS = {
-  Capricornio: [
-    'Trevo Aguaí Anhanguera','Leme','Leme 2000','Araras','Araras 2200','Cordeirópolis','Rio Claro 2000','Rio Claro','Ipeúna','Lagoa na SP-225','Itirapina','FAZ DA TOCA 2700','Analândia','Corumbataí','Santa Cruz da Conceição'
-  ],
-  Aquarius: [
-    'Trevo Aguaí Anhanguera','Analândia','Analândia 2800','Itirapina','Itirapina 2600','Lagoa na SP-225','Fazenda Brotas','Américo Brasiliense','São Carlos 2600','Descalvado','Porto Ferreira','São Carlos','Ibaté'
-  ],
-  Peixes: [
-    'Porto Ferreira','Descalvado','Usina Ipiranga 2500','Faz da Barra 2300','Faz Álamo 2400','Faz Pixoxo 2100','Américo Brasiliense','Rincão','Usina sta rita 2100','Pedágio São Simão','Luís Antônio','Área Vermelha 2100'
-  ],
-  Taurus: [
-    'Porto Ferreira','Pedágio São Simão','Santa Rita do Passa Quatro 2800','Santa Rita do Passa Quatro','Santa Cruz da Esperança','Fazenda da Serra','Mococa','São Simão','Santa Rosa do Viterbo'
-  ],
-  'Tráfego AFA': [
-    'Sumidouro','Estrada SO/SGT','Ponte Velha','Prédios Brancos','Júpiter','Morro da Antena','Trevo','Trevo Aguaí Anhanguera','Lagoa do Aeroclube','Engenho','Ponta W Vila SGT'
-  ]
+  Capricornio: getPointsByKeyword('Capricornio'), // Pega tanto 'Capricornio' quanto 'Capricórnio' via normalize
+  Aquarius: getPointsByKeyword('Aquarius'), // Pega 'Aquarius' e 'Aquárius'
+  Peixes: getPointsByKeyword('Peixes'),
+  Taurus: getPointsByKeyword('Taurus'),
+  'Tráfego AFA': getPointsByKeyword('Tráfego AFA')
 };
 
 const AREA_LIMITS = {
-  Capricornio: [
-    'Trevo Aguaí Anhanguera', 'Leme', 'Araras', 'Cordeirópolis', 'Ipeúna', 'Lagoa na SP-225', 'Itirapina', 'Analândia'
-  ],
-  Aquarius: [
-    'Trevo Aguaí Anhanguera', 'Analândia', 'Itirapina', 'Lagoa na SP-225', 'Fazenda Brotas', 'Américo Brasiliense', 'Descalvado', 'Porto Ferreira'
-  ],
-  Peixes: [
-    'Porto Ferreira', 'Pedágio São Simão', 'Rincão', 'Américo Brasiliense', 'Descalvado'
-  ],
-  Taurus: [
-    'Porto Ferreira', 'Pedágio São Simão', 'Santa Cruz da Esperança', 'Fazenda da Serra', 'Mococa', 'Santa Rosa do Viterbo', 'Santa Rita do Passa Quatro'
-  ]
+  Capricornio: points.filter(p => normalize(p.info).includes('limite') && normalize(p.info).includes('capricornio')).map(p => p.name),
+  Aquarius: points.filter(p => normalize(p.info).includes('limite') && normalize(p.info).includes('aquarius')).map(p => p.name),
+  Peixes: points.filter(p => normalize(p.info).includes('limite') && normalize(p.info).includes('peixes')).map(p => p.name),
+  Taurus: points.filter(p => normalize(p.info).includes('limite') && normalize(p.info).includes('taurus')).map(p => p.name)
 };
+
 
 export default function App() {
   const mapContainer = useRef(null);
@@ -138,14 +136,14 @@ export default function App() {
   const [areaPointIndex, setAreaPointIndex] = useState(0);
   const [areaQueue, setAreaQueue] = useState([]);
 
-  const normalize = (s) => {
+  const normalizeStr = (s) => {
     try { return String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
     catch (e) { return String(s || '').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
   };
 
   const nameToPointId = (name) => {
-    const norm = normalize(name);
-    const p = points.find(pt => normalize(pt.name) === norm || (pt.aliases || []).some(a => normalize(a) === norm));
+    const norm = normalizeStr(name);
+    const p = points.find(pt => normalizeStr(pt.name) === norm || (pt.aliases || []).some(a => normalizeStr(a) === norm));
     return p ? p.id : null;
   };
 
@@ -162,25 +160,10 @@ export default function App() {
     return parts.join(' ');
   };
 
+  // Funcao simplificada: Mostra exatamente o que está no campo info do objeto point
   const getPointInfo = (point) => {
     if (!point) return "";
-    let infoParts = [];
-    const pId = point.id;
-    Object.entries(AREAS).forEach(([areaName, areaPointsNames]) => {
-      const isInArea = areaPointsNames.map(n => nameToPointId(n)).includes(pId);
-      if (isInArea) {
-        const limits = AREA_LIMITS[areaName] || [];
-        const isLimit = limits.map(n => nameToPointId(n)).includes(pId);
-        if (isLimit) {
-          infoParts.push(`Limite da área de ${areaName}`);
-        } else {
-          infoParts.push(`Ponto da área de ${areaName}`);
-        }
-      }
-    });
-    const uniqueInfo = [...new Set(infoParts)];
-    if (uniqueInfo.length === 0) return "Ponto Isolado";
-    return uniqueInfo.join(" | ");
+    return point.info || "Ponto Isolado";
   };
 
   useEffect(() => {
@@ -200,7 +183,6 @@ export default function App() {
     setAreaPointIndex(0);
   }, [selectedArea]);
 
-  // Effect to Toggle Terrain ONLY (No Sky) - OPTIMIZED TILE SIZE
   useEffect(() => {
     if (!isMapLoaded || !map.current) return;
     if (showTerrain) {
@@ -219,6 +201,7 @@ export default function App() {
 
         const limitIds = limitNames.map(name => nameToPointId(name)).filter(Boolean);
         
+        // Se houver menos de 2 pontos, não dá pra traçar linha
         if (limitIds.length < 2) {
              source.setData({ type: 'FeatureCollection', features: [] });
              return;
@@ -226,9 +209,12 @@ export default function App() {
 
         const segments = [];
 
+        // Conecta os pontos de limite sequencialmente
+        // NOTA: Como os pontos na lista podem não estar em ordem geográfica, isso pode cruzar linhas.
+        // O ideal seria que a lista de limites estivesse ordenada, mas vamos ligar na ordem da tabela/filtro.
         for (let i = 0; i < limitIds.length; i++) {
             const id1 = limitIds[i];
-            const id2 = limitIds[(i + 1) % limitIds.length];
+            const id2 = limitIds[(i + 1) % limitIds.length]; // Fecha o polígono com o último ligando ao primeiro
 
             const p1 = points.find(p => p.id === id1);
             const p2 = points.find(p => p.id === id2);
@@ -277,14 +263,13 @@ export default function App() {
           container: mapContainer.current,
           style: styleJson,
           center: INITIAL_CENTER,
-          zoom: 12,
+          zoom: 9.5, // Zoom um pouco mais afastado pra ver tudo
           pitch,
           bearing: bearing - MAP_DECLINATION,
           maxPitch: 85, 
         });
 
         map.current.on('load', () => {
-          // --- OTIMIZAÇÃO: TileSize 512 para o terreno ---
           map.current.addSource('terrain', {
               "type": "raster-dem",
               "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${MAPTILER_KEY}`,
@@ -396,11 +381,10 @@ export default function App() {
 
           setIsMapLoaded(true);
 
-          // --- OTIMIZAÇÃO: Throttle no evento 'move' ---
           let lastUpdate = 0;
           map.current.on('move', () => {
             const now = Date.now();
-            if (now - lastUpdate < 100) return; // Limita a 10 updates por segundo
+            if (now - lastUpdate < 100) return; 
             lastUpdate = now;
 
             if (!map.current) return;
@@ -573,8 +557,8 @@ export default function App() {
   };
 
   const checkAnswer = () => {
-    const normalized = normalize(answer);
-    if (currentPoint && currentPoint.aliases.map(a => normalize(a)).includes(normalized)) {
+    const normalized = normalizeStr(answer);
+    if (currentPoint && currentPoint.aliases.map(a => normalizeStr(a)).includes(normalized)) {
       setFeedback(null);
       const updated = Array.from(new Set([...guessed, currentPoint.id]));
       setGuessed(updated);
@@ -654,7 +638,7 @@ export default function App() {
       setFinalTime(0); 
       setShowCompletion(false); 
       setShowKey(false); 
-      if (map.current) map.current.flyTo({ center: INITIAL_CENTER, zoom: 12, pitch, bearing: bearing - MAP_DECLINATION }); 
+      if (map.current) map.current.flyTo({ center: INITIAL_CENTER, zoom: 10, pitch, bearing: bearing - MAP_DECLINATION }); 
       markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = 'none'; }); 
   };
 
@@ -861,7 +845,7 @@ export default function App() {
       {currentPoint && (
         <div style={{ position: 'absolute', top: '80px', left: '16px', background: 'white', padding: '8px', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', width: 'auto', maxWidth: '220px' }}>
           
-          <div style={{ fontSize: '11px', color: '#666', marginBottom: 2, fontStyle: 'italic' }}>
+          <div style={{ fontSize: '11px', color: '#666', marginBottom: 2, fontStyle: 'italic', fontWeight: 'bold' }}>
             {getPointInfo(currentPoint)}
           </div>
 
