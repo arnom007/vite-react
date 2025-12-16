@@ -130,17 +130,29 @@ const AREA_LIMITS = {
   ]
 };
 
-// Pares que devem usar rota real (dirigível) em vez de linha reta
-const REAL_ROUTE_SEGMENTS = [
-  ['p30', 'p52'], // Porto Ferreira <-> Pedágio São Simão
-  ['p52', 'p30']  // Vice-versa
-];
+// Rotas Fixas para segmentos específicos (para garantir o desenho correto da estrada)
+// Porto Ferreira (p30) <-> Pedágio São Simão (p52) : Segue a Rodovia Anhanguera (SP-330)
+const STATIC_ROUTES = {
+  'p30-p52': [
+    [-47.4833, -21.8570], // Porto Ferreira
+    [-47.4950, -21.8400],
+    [-47.5120, -21.8150],
+    [-47.5350, -21.7800],
+    [-47.5500, -21.7400],
+    [-47.5650, -21.7000], // Próximo a Santa Rita
+    [-47.5800, -21.6600],
+    [-47.6000, -21.6000],
+    [-47.6200, -21.5400],
+    [-47.6400, -21.4800],
+    [-47.6550, -21.4400],
+    [-47.6642, -21.4144]  // Pedágio São Simão
+  ]
+};
 
 export default function App() {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markersRef = useRef(new Map());
-  const [cachedRoutes, setCachedRoutes] = useState({}); // Cache para guardar as geometrias de rotas reais
 
   const MAP_DECLINATION = 20;
   const [guessed, setGuessed] = useState([]);
@@ -238,32 +250,6 @@ export default function App() {
     }
   }, [showTerrain, isMapLoaded]);
 
-  // Função para buscar rota de carro
-  const fetchRouteGeometry = async (p1, p2) => {
-      const key = `${p1.id}-${p2.id}`;
-      // Se já temos em cache, retorna
-      if (cachedRoutes[key]) return cachedRoutes[key];
-
-      try {
-          const start = p1.coords;
-          const end = p2.coords;
-          // MapTiler Routing API
-          const url = `https://api.maptiler.com/routing/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?key=${MAPTILER_KEY}&geometries=geojson`;
-          
-          const response = await fetch(url);
-          const data = await response.json();
-          
-          if (data.routes && data.routes[0] && data.routes[0].geometry) {
-              const geometry = data.routes[0].geometry.coordinates;
-              setCachedRoutes(prev => ({ ...prev, [key]: geometry }));
-              return geometry;
-          }
-      } catch (e) {
-          console.error("Erro ao buscar rota:", e);
-      }
-      return null;
-  };
-
   // Efeito principal de desenho dos limites
   useEffect(() => {
     if (!isMapLoaded || !map.current) return;
@@ -302,38 +288,23 @@ export default function App() {
                 }
 
                 if (isVisible) {
-                    // Verifica se é um segmento especial que requer rota real
-                    const isRealRoute = REAL_ROUTE_SEGMENTS.some(pair => 
-                        (pair[0] === id1 && pair[1] === id2) || (pair[0] === id2 && pair[1] === id1)
-                    );
+                    // Verifica se existe uma rota estática definida para este par
+                    const routeKey = `${id1}-${id2}`;
+                    const reverseRouteKey = `${id2}-${id1}`;
+                    
+                    let geometryCoordinates = [p1.coords, p2.coords]; // Padrão: linha reta
 
-                    if (isRealRoute) {
-                        // Tenta pegar a rota real
-                        let routeGeom = cachedRoutes[`${id1}-${id2}`] || cachedRoutes[`${id2}-${id1}`];
-                        
-                        // Se não tem cache, desenha reto primeiro e busca em background (se ainda não buscou)
-                        if (!routeGeom) {
-                             // Desenha reto temporariamente
-                             features.push({
-                                type: 'Feature',
-                                geometry: { type: 'LineString', coordinates: [p1.coords, p2.coords] }
-                             });
-                             // Dispara busca (não bloqueante)
-                             fetchRouteGeometry(p1, p2); 
-                        } else {
-                             // Desenha rota real
-                             features.push({
-                                type: 'Feature',
-                                geometry: { type: 'LineString', coordinates: routeGeom }
-                             });
-                        }
-                    } else {
-                        // Segmento normal (linha reta)
-                        features.push({
-                            type: 'Feature',
-                            geometry: { type: 'LineString', coordinates: [p1.coords, p2.coords] }
-                        });
+                    if (STATIC_ROUTES[routeKey]) {
+                        geometryCoordinates = STATIC_ROUTES[routeKey];
+                    } else if (STATIC_ROUTES[reverseRouteKey]) {
+                        // Se estiver definido ao contrário, inverte o array de coordenadas
+                        geometryCoordinates = [...STATIC_ROUTES[reverseRouteKey]].reverse();
                     }
+
+                    features.push({
+                        type: 'Feature',
+                        geometry: { type: 'LineString', coordinates: geometryCoordinates }
+                    });
                 }
             }
         }
@@ -350,7 +321,7 @@ export default function App() {
         updateLayer(areaName, limitNames);
     });
 
-  }, [isMapLoaded, guessed, boundaryMode, cachedRoutes]); // Dependência adicionada: cachedRoutes
+  }, [isMapLoaded, guessed, boundaryMode]); 
 
   useEffect(() => {
     if (map.current) return;
