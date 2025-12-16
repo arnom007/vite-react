@@ -83,8 +83,8 @@ const normalize = (s) => {
 
 // Definição dinâmica das áreas e limites baseada no texto do usuário
 const AREAS = {
-  Capricornio: getPointsByKeyword('Capricornio'), // Pega tanto 'Capricornio' quanto 'Capricórnio' via normalize
-  Aquarius: getPointsByKeyword('Aquarius'), // Pega 'Aquarius' e 'Aquárius'
+  Capricornio: getPointsByKeyword('Capricornio'), 
+  Aquarius: getPointsByKeyword('Aquarius'), 
   Peixes: getPointsByKeyword('Peixes'),
   Taurus: getPointsByKeyword('Taurus'),
   'Tráfego AFA': getPointsByKeyword('Tráfego AFA')
@@ -130,11 +130,17 @@ const AREA_LIMITS = {
   ]
 };
 
+// Pares que devem usar rota real (dirigível) em vez de linha reta
+const REAL_ROUTE_SEGMENTS = [
+  ['p30', 'p52'], // Porto Ferreira <-> Pedágio São Simão
+  ['p52', 'p30']  // Vice-versa
+];
 
 export default function App() {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markersRef = useRef(new Map());
+  const [cachedRoutes, setCachedRoutes] = useState({}); // Cache para guardar as geometrias de rotas reais
 
   const MAP_DECLINATION = 20;
   const [guessed, setGuessed] = useState([]);
@@ -193,7 +199,6 @@ export default function App() {
     return parts.join(' ');
   };
 
-  // Funcao simplificada: Mostra exatamente o que está no campo info do objeto point
   const getPointInfo = (point) => {
     if (!point) return "";
     return point.info || "Ponto Isolado";
@@ -209,10 +214,18 @@ export default function App() {
     };
   }, []);
 
+  const getSortedAreaIds = (areaName) => {
+    const allNames = AREAS[areaName] || [];
+    const limitNames = AREA_LIMITS[areaName] || [];
+    const limitIds = limitNames.map(n => nameToPointId(n)).filter(Boolean);
+    const allIds = allNames.map(n => nameToPointId(n)).filter(Boolean);
+    const internalIds = allIds.filter(id => !limitIds.includes(id));
+    return [...limitIds, ...internalIds];
+  };
+
   useEffect(() => {
-    const names = AREAS[selectedArea] || [];
-    const ids = names.map(n => nameToPointId(n)).filter(Boolean);
-    setAreaQueue(ids);
+    const sortedIds = getSortedAreaIds(selectedArea);
+    setAreaQueue(sortedIds);
     setAreaPointIndex(0);
   }, [selectedArea]);
 
@@ -225,29 +238,52 @@ export default function App() {
     }
   }, [showTerrain, isMapLoaded]);
 
+  // Função para buscar rota de carro
+  const fetchRouteGeometry = async (p1, p2) => {
+      const key = `${p1.id}-${p2.id}`;
+      // Se já temos em cache, retorna
+      if (cachedRoutes[key]) return cachedRoutes[key];
+
+      try {
+          const start = p1.coords;
+          const end = p2.coords;
+          // MapTiler Routing API
+          const url = `https://api.maptiler.com/routing/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?key=${MAPTILER_KEY}&geometries=geojson`;
+          
+          const response = await fetch(url);
+          const data = await response.json();
+          
+          if (data.routes && data.routes[0] && data.routes[0].geometry) {
+              const geometry = data.routes[0].geometry.coordinates;
+              setCachedRoutes(prev => ({ ...prev, [key]: geometry }));
+              return geometry;
+          }
+      } catch (e) {
+          console.error("Erro ao buscar rota:", e);
+      }
+      return null;
+  };
+
+  // Efeito principal de desenho dos limites
   useEffect(() => {
     if (!isMapLoaded || !map.current) return;
 
-    Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => {
+    const updateLayer = async (areaName, limitNames) => {
         const source = map.current.getSource(`source-${areaName}`);
         if (!source) return;
 
         const limitIds = limitNames.map(name => nameToPointId(name)).filter(Boolean);
         
-        // Se houver menos de 2 pontos, não dá pra traçar linha
         if (limitIds.length < 2) {
              source.setData({ type: 'FeatureCollection', features: [] });
              return;
         }
 
-        const segments = [];
+        const features = [];
 
-        // Conecta os pontos de limite sequencialmente
-        // NOTA: Como os pontos na lista podem não estar em ordem geográfica, isso pode cruzar linhas.
-        // O ideal seria que a lista de limites estivesse ordenada, mas vamos ligar na ordem da tabela/filtro.
         for (let i = 0; i < limitIds.length; i++) {
             const id1 = limitIds[i];
-            const id2 = limitIds[(i + 1) % limitIds.length]; // Fecha o polígono com o último ligando ao primeiro
+            const id2 = limitIds[(i + 1) % limitIds.length];
 
             const p1 = points.find(p => p.id === id1);
             const p2 = points.find(p => p.id === id2);
@@ -266,23 +302,55 @@ export default function App() {
                 }
 
                 if (isVisible) {
-                    segments.push([p1.coords, p2.coords]);
+                    // Verifica se é um segmento especial que requer rota real
+                    const isRealRoute = REAL_ROUTE_SEGMENTS.some(pair => 
+                        (pair[0] === id1 && pair[1] === id2) || (pair[0] === id2 && pair[1] === id1)
+                    );
+
+                    if (isRealRoute) {
+                        // Tenta pegar a rota real
+                        let routeGeom = cachedRoutes[`${id1}-${id2}`] || cachedRoutes[`${id2}-${id1}`];
+                        
+                        // Se não tem cache, desenha reto primeiro e busca em background (se ainda não buscou)
+                        if (!routeGeom) {
+                             // Desenha reto temporariamente
+                             features.push({
+                                type: 'Feature',
+                                geometry: { type: 'LineString', coordinates: [p1.coords, p2.coords] }
+                             });
+                             // Dispara busca (não bloqueante)
+                             fetchRouteGeometry(p1, p2); 
+                        } else {
+                             // Desenha rota real
+                             features.push({
+                                type: 'Feature',
+                                geometry: { type: 'LineString', coordinates: routeGeom }
+                             });
+                        }
+                    } else {
+                        // Segmento normal (linha reta)
+                        features.push({
+                            type: 'Feature',
+                            geometry: { type: 'LineString', coordinates: [p1.coords, p2.coords] }
+                        });
+                    }
                 }
             }
         }
 
         const geoJson = {
-            'type': 'Feature',
-            'geometry': {
-                'type': 'MultiLineString',
-                'coordinates': segments
-            }
+            'type': 'FeatureCollection',
+            'features': features
         };
 
         source.setData(geoJson);
+    };
+
+    Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => {
+        updateLayer(areaName, limitNames);
     });
 
-  }, [isMapLoaded, guessed, boundaryMode]);
+  }, [isMapLoaded, guessed, boundaryMode, cachedRoutes]); // Dependência adicionada: cachedRoutes
 
   useEffect(() => {
     if (map.current) return;
@@ -296,7 +364,7 @@ export default function App() {
           container: mapContainer.current,
           style: styleJson,
           center: INITIAL_CENTER,
-          zoom: 9.5, // Zoom um pouco mais afastado pra ver tudo
+          zoom: 9.5, 
           pitch,
           bearing: bearing - MAP_DECLINATION,
           maxPitch: 85, 
@@ -624,8 +692,8 @@ export default function App() {
              const nextAreaName = areaList[nextAreaIdx];
              setSelectedArea(nextAreaName);
 
-             const nextNames = AREAS[nextAreaName] || [];
-             const nextIds = nextNames.map(n => nameToPointId(n)).filter(Boolean);
+             // AQUI: Usa o helper getSortedAreaIds para garantir a ordem correta na próxima área também
+             const nextIds = getSortedAreaIds(nextAreaName);
              setAreaQueue(nextIds);
              setAreaPointIndex(0);
 
@@ -686,8 +754,10 @@ export default function App() {
   const startAreaMode = () => {
     setAreaMode(true);
     setRandomMode(false);
-    const names = AREAS[selectedArea] || [];
-    const ids = names.map(n => nameToPointId(n)).filter(Boolean);
+    
+    // AQUI: Usa o getSortedAreaIds para iniciar a fila ordenadamente
+    const ids = getSortedAreaIds(selectedArea);
+
     setAreaQueue(ids);
     setAreaIndex(areaList.indexOf(selectedArea));
     setAreaPointIndex(0);
