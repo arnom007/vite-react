@@ -31,7 +31,7 @@ const points = [
   { id: 'p25', name: 'Cravinhos', aliases: ['cravinhos'], coords: [-47.7278, -21.3286] },
   { id: 'p26', name: 'Cajuru', aliases: ['cajuru'], coords: [-47.3058, -21.2731] },
   { id: 'p27', name: 'Mococa', aliases: ['mococa'], coords: [-47.0003, -21.4756] },
-  { id: 'p28', name: 'Santa Rosa de Viterbo', aliases: ['santa rosa de viterbo'], coords: [-47.3661, -21.501] },
+  { id: 'p28', name: 'Santa Rosa do Viterbo', aliases: ['santa rosa do viterbo'], coords: [-47.3661, -21.501] },
   { id: 'p29', name: 'Santa Rita do Passa Quatro', aliases: ['santa rita do passa quatro'], coords: [-47.4803, -21.7086] },
   { id: 'p30', name: 'Porto Ferreira', aliases: ['porto ferreira'], coords: [-47.4833, -21.857] },
   { id: 'p31', name: 'Leme', aliases: ['leme'], coords: [-47.3847, -22.1811] },
@@ -78,7 +78,7 @@ const AREAS = {
     'Porto Ferreira','Descalvado','Usina Ipiranga 2500','Faz da Barra 2300','Faz Álamo 2400','Faz Pixoxo 2100','Américo Brasiliense','Rincão','Usina sta rita 2100','Pedágio São Simão','Luís Antônio','Área Vermelha 2100'
   ],
   Taurus: [
-    'Porto Ferreira','Pedágio São Simão','Santa Rita do Passa Quatro 2800','Santa Rita do Passa Quatro','Santa Cruz da Esperança','Fazenda da Serra','Mococa','São Simão','Santa Rosa de Viterbo'
+    'Porto Ferreira','Pedágio São Simão','Santa Rita do Passa Quatro 2800','Santa Rita do Passa Quatro','Santa Cruz da Esperança','Fazenda da Serra','Mococa','São Simão','Santa Rosa do Viterbo'
   ],
   'Tráfego AFA': [
     'Sumidouro','Estrada SO/SGT','Ponte Velha','Prédios Brancos','Júpiter','Morro da Antena','Trevo','Trevo Aguaí Anhanguera','Lagoa do Aeroclube','Engenho','Ponta W Vila SGT'
@@ -96,7 +96,7 @@ const AREA_LIMITS = {
     'Porto Ferreira', 'Pedágio São Simão', 'Rincão', 'Américo Brasiliense', 'Descalvado'
   ],
   Taurus: [
-    'Porto Ferreira', 'Pedágio São Simão', 'Santa Cruz da Esperança', 'Fazenda da Serra', 'Mococa', 'Santa Rosa de Viterbo', 'Santa Rita do Passa Quatro'
+    'Porto Ferreira', 'Pedágio São Simão', 'Santa Cruz da Esperança', 'Fazenda da Serra', 'Mococa', 'Santa Rosa do Viterbo', 'Santa Rita do Passa Quatro'
   ]
 };
 
@@ -200,14 +200,12 @@ export default function App() {
     setAreaPointIndex(0);
   }, [selectedArea]);
 
-  // Effect to Toggle Terrain ONLY (No Sky)
+  // Effect to Toggle Terrain ONLY (No Sky) - OPTIMIZED TILE SIZE
   useEffect(() => {
     if (!isMapLoaded || !map.current) return;
     if (showTerrain) {
-        // Ativa Relevo
         map.current.setTerrain({ 'source': 'terrain', 'exaggeration': 1.1 });
     } else {
-        // Desativa Relevo
         map.current.setTerrain(null);
     }
   }, [showTerrain, isMapLoaded]);
@@ -286,11 +284,11 @@ export default function App() {
         });
 
         map.current.on('load', () => {
-          // --- CONFIGURAR FONTE DE RELEVO 3D (TERRAIN) ---
+          // --- OTIMIZAÇÃO: TileSize 512 para o terreno ---
           map.current.addSource('terrain', {
               "type": "raster-dem",
               "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${MAPTILER_KEY}`,
-              "tileSize": 256
+              "tileSize": 512
           });
 
           Object.keys(AREA_LIMITS).forEach(areaName => {
@@ -398,7 +396,13 @@ export default function App() {
 
           setIsMapLoaded(true);
 
+          // --- OTIMIZAÇÃO: Throttle no evento 'move' ---
+          let lastUpdate = 0;
           map.current.on('move', () => {
+            const now = Date.now();
+            if (now - lastUpdate < 100) return; // Limita a 10 updates por segundo
+            lastUpdate = now;
+
             if (!map.current) return;
             const p = Math.round(map.current.getPitch());
             const b = Math.round(((map.current.getBearing() + MAP_DECLINATION) + 360) % 360);
