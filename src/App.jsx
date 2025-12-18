@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 
-const MAPTILER_KEY = "YHlTRP429Wo5PZXGJklr";
-const MAP_STYLE = `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`;
+// Lista de chaves API para rotação/fallback
+const API_KEYS = [
+  "YHlTRP429Wo5PZXGJklr", // Key 1
+  "YS0YNd7SKoqGfXhdY8Bx", // Key 2
+  "R13imFP2SenJH9JsgVkN"  // Key 3
+];
 
-// Coordenadas Iniciais (Mantidas ou ajustadas para um ponto central médio)
 const INITIAL_CENTER = [-47.6, -22.0];
 
 // Dados extraídos da sua tabela atualizada
@@ -68,20 +71,17 @@ const points = [
   { id: 'p62', name: 'Descalvado', aliases: ['descalvado'], coords: [-47.6258, -21.9117], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍' },
 ];
 
-// Helper para montar as listas de Áreas e Limites automaticamente baseando-se no campo "info"
 const getPointsByKeyword = (keyword) => {
   return points
     .filter(p => normalize(p.info).includes(normalize(keyword)))
     .map(p => p.name);
 };
 
-// Normalizar strings para comparação (remove acentos, minúsculas)
 const normalize = (s) => {
   try { return String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase(); }
   catch (e) { return String(s || '').toLowerCase(); }
 };
 
-// Definição dinâmica das áreas e limites baseada no texto do usuário
 const AREAS = {
   Capricornio: getPointsByKeyword('Capricornio'), 
   Aquarius: getPointsByKeyword('Aquarius'), 
@@ -90,62 +90,26 @@ const AREAS = {
   'Tráfego AFA': getPointsByKeyword('Tráfego AFA')
 };
 
-// DEFINIÇÃO MANUAL DA SEQUÊNCIA DE LIMITES PARA O DESENHO CORRETO
 const AREA_LIMITS = {
   Capricornio: [
-    'Trevo Aguaí Anhanguera', 
-    'Leme', 
-    'Araras', 
-    'Cordeirópolis', 
-    'Ipeúna', 
-    'Lagoa na SP-225', 
-    'Itirapina', 
-    'Analândia'
+    'Trevo Aguaí Anhanguera', 'Leme', 'Araras', 'Cordeirópolis', 'Ipeúna', 'Lagoa na SP-225', 'Itirapina', 'Analândia'
   ],
   Aquarius: [
-    'Trevo Aguaí Anhanguera', 
-    'Analândia', 
-    'Itirapina', 
-    'Lagoa na SP-225', 
-    'Fazenda Brotas', 
-    'Américo Brasiliense', 
-    'Descalvado', 
-    'Porto Ferreira'
+    'Trevo Aguaí Anhanguera', 'Analândia', 'Itirapina', 'Lagoa na SP-225', 'Fazenda Brotas', 'Américo Brasiliense', 'Descalvado', 'Porto Ferreira'
   ],
   Peixes: [
-    'Porto Ferreira', 
-    'Pedágio São Simão', 
-    'Rincão', 
-    'Américo Brasiliense', 
-    'Descalvado'
+    'Porto Ferreira', 'Pedágio São Simão', 'Rincão', 'Américo Brasiliense', 'Descalvado'
   ],
   Taurus: [
-    'Porto Ferreira', 
-    'Pedágio São Simão', 
-    'Santa Cruz da Esperança', 
-    'Fazenda da Serra', 
-    'Mococa', 
-    'Santa Rosa do Viterbo', 
-    'Santa Rita do Passa Quatro'
+    'Porto Ferreira', 'Pedágio São Simão', 'Santa Cruz da Esperança', 'Fazenda da Serra', 'Mococa', 'Santa Rosa do Viterbo', 'Santa Rita do Passa Quatro'
   ]
 };
 
-// Rotas Fixas para segmentos específicos (para garantir o desenho correto da estrada)
-// Porto Ferreira (p30) <-> Pedágio São Simão (p52) : Segue a Rodovia Anhanguera (SP-330)
 const STATIC_ROUTES = {
   'p30-p52': [
-    [-47.4833, -21.8570], // Porto Ferreira
-    [-47.4950, -21.8400],
-    [-47.5120, -21.8150],
-    [-47.5350, -21.7800],
-    [-47.5500, -21.7400],
-    [-47.5650, -21.7000], // Próximo a Santa Rita
-    [-47.5800, -21.6600],
-    [-47.6000, -21.6000],
-    [-47.6200, -21.5400],
-    [-47.6400, -21.4800],
-    [-47.6550, -21.4400],
-    [-47.6642, -21.4144]  // Pedágio São Simão
+    [-47.4833, -21.8570], [-47.4950, -21.8400], [-47.5120, -21.8150], [-47.5350, -21.7800],
+    [-47.5500, -21.7400], [-47.5650, -21.7000], [-47.5800, -21.6600], [-47.6000, -21.6000],
+    [-47.6200, -21.5400], [-47.6400, -21.4800], [-47.6550, -21.4400], [-47.6642, -21.4144]
   ]
 };
 
@@ -153,6 +117,10 @@ export default function App() {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markersRef = useRef(new Map());
+
+  // Estados para gerenciamento da chave API
+  const [activeKey, setActiveKey] = useState(null);
+  const [mapError, setMapError] = useState(false);
 
   const MAP_DECLINATION = 20;
   const [guessed, setGuessed] = useState([]);
@@ -186,6 +154,33 @@ export default function App() {
   const [areaIndex, setAreaIndex] = useState(0);
   const [areaPointIndex, setAreaPointIndex] = useState(0);
   const [areaQueue, setAreaQueue] = useState([]);
+
+  // --- Lógica de Validação e Seleção de Chave API ---
+  useEffect(() => {
+    const validateKeys = async () => {
+      for (const key of API_KEYS) {
+        try {
+          // Tenta fazer um fetch leve para validar a chave (usando o style JSON)
+          const testUrl = `https://api.maptiler.com/maps/satellite/style.json?key=${key}`;
+          const response = await fetch(testUrl);
+          
+          if (response.ok) {
+            console.log(`Chave API válida encontrada: ...${key.slice(-4)}`);
+            setActiveKey(key);
+            return; // Encerra assim que achar uma válida
+          } else {
+            console.warn(`Chave API falhou: ...${key.slice(-4)} (Status: ${response.status})`);
+          }
+        } catch (error) {
+          console.warn(`Erro de rede ao testar chave: ...${key.slice(-4)}`, error);
+        }
+      }
+      // Se o loop terminar sem retornar, nenhuma chave funcionou
+      setMapError(true);
+    };
+
+    validateKeys();
+  }, []);
 
   const normalizeStr = (s) => {
     try { return String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
@@ -242,13 +237,13 @@ export default function App() {
   }, [selectedArea]);
 
   useEffect(() => {
-    if (!isMapLoaded || !map.current) return;
+    if (!isMapLoaded || !map.current || !activeKey) return;
     if (showTerrain) {
         map.current.setTerrain({ 'source': 'terrain', 'exaggeration': 1.1 });
     } else {
         map.current.setTerrain(null);
     }
-  }, [showTerrain, isMapLoaded]);
+  }, [showTerrain, isMapLoaded, activeKey]);
 
   // Efeito principal de desenho dos limites
   useEffect(() => {
@@ -288,16 +283,13 @@ export default function App() {
                 }
 
                 if (isVisible) {
-                    // Verifica se existe uma rota estática definida para este par
                     const routeKey = `${id1}-${id2}`;
                     const reverseRouteKey = `${id2}-${id1}`;
-                    
-                    let geometryCoordinates = [p1.coords, p2.coords]; // Padrão: linha reta
+                    let geometryCoordinates = [p1.coords, p2.coords]; 
 
                     if (STATIC_ROUTES[routeKey]) {
                         geometryCoordinates = STATIC_ROUTES[routeKey];
                     } else if (STATIC_ROUTES[reverseRouteKey]) {
-                        // Se estiver definido ao contrário, inverte o array de coordenadas
                         geometryCoordinates = [...STATIC_ROUTES[reverseRouteKey]].reverse();
                     }
 
@@ -323,12 +315,14 @@ export default function App() {
 
   }, [isMapLoaded, guessed, boundaryMode]); 
 
+  // Inicialização do Mapa (Só ocorre se tiver activeKey)
   useEffect(() => {
-    if (map.current) return;
+    if (map.current || !activeKey) return; // Espera ter uma chave válida
 
     const initMap = async () => {
       try {
-        const response = await fetch(MAP_STYLE);
+        const styleUrl = `https://api.maptiler.com/maps/satellite/style.json?key=${activeKey}`;
+        const response = await fetch(styleUrl);
         const styleJson = await response.json();
 
         map.current = new maplibregl.Map({
@@ -344,7 +338,7 @@ export default function App() {
         map.current.on('load', () => {
           map.current.addSource('terrain', {
               "type": "raster-dem",
-              "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${MAPTILER_KEY}`,
+              "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${activeKey}`,
               "tileSize": 512
           });
 
@@ -483,7 +477,7 @@ export default function App() {
       if (map.current) map.current.remove();
       map.current = null;
     };
-  }, []);
+  }, [activeKey]); // Recria o mapa se a chave mudar (incomum, mas correto)
 
   useEffect(() => {
     if (!isMapLoaded) return;
@@ -806,6 +800,21 @@ export default function App() {
         }
       `}</style>
 
+      {/* POPUP DE ERRO CRÍTICO (Limite de API) */}
+      {mapError && (
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: 'white', textAlign: 'center', padding: '20px' }}>
+          <div style={{ background: '#333', padding: '30px', borderRadius: '12px', maxWidth: '400px', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+            <h2 style={{ color: '#ff5252', marginTop: 0 }}>⚠️ Erro no Mapa</h2>
+            <p style={{ fontSize: '16px', lineHeight: '1.5' }}>
+              Limite de visualizações do mapa excedido em todas as chaves disponíveis.
+            </p>
+            <p style={{ fontSize: '14px', color: '#ccc', marginTop: '20px' }}>
+              Por favor, <strong>entre em contato com o desenvolvedor</strong> para atualizar as credenciais.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Completion Popup */}
       {showCompletion && (
           <div className="completion-popup" style={{
@@ -849,7 +858,7 @@ export default function App() {
           </div>
       )}
 
-      {showIntro && (
+      {showIntro && !mapError && (
         <div style={{ position: 'absolute', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
           <div style={{ background:'white', padding:'20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4, maxHeight: '90%', overflowY: 'auto' }}>
             
@@ -902,267 +911,272 @@ export default function App() {
 
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
-      <div style={{ position: 'absolute', top: 10, right: 10, background:'rgba(255,255,255,0.45)', padding:6, borderRadius:6, minWidth:90, display:'flex', flexDirection:'column', gap:6, alignItems:'center', zIndex: 10 }}>
-        <div style={{ fontSize:11, opacity:0.8 }}>Pitch</div>
-        <input type="range" min="0" max="85" value={pitch} onChange={(e) => adjustPitch(e.target.value)} style={{ width:80 }} />
-        <div style={{ fontSize:11, opacity:0.8 }}>Proa</div>
-        <input type="range" min="0" max="360" value={bearing} onChange={(e) => adjustBearing(e.target.value)} style={{ width:80 }} />
-      </div>
-
-      <div style={{ position:'absolute', top:160, right:10, background:'rgba(255,255,255,0.6)', padding:6, borderRadius:6, textAlign:'center', zIndex: 10 }}>
-        <div style={{ width:28, height:28, border:'2px solid rgba(0,0,0,0.6)', borderRadius:'50%', margin:'auto', position:'relative' }}>
-          <div style={{ position:'absolute', top:4, left:'50%', width:2, height:18, background:'red', transform:`translateX(-50%) rotate(${bearing}deg)` }} />
-        </div>
-        <div style={{ fontSize:12 }}>{bearing}°</div>
-      </div>
-
-      {currentPoint && (
-        <div style={{ position: 'absolute', top: '80px', left: '16px', background: 'white', padding: '8px', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', width: 'auto', maxWidth: '220px' }}>
-          
-          <div style={{ fontSize: '11px', color: '#666', marginBottom: 2, fontStyle: 'italic', fontWeight: 'bold' }}>
-            {getPointInfo(currentPoint)}
+      {/* Resto da UI (Pitch, Bússola, Input, Controles) - Só exibe se não houver erro crítico */}
+      {!mapError && (
+        <>
+          <div style={{ position: 'absolute', top: 10, right: 10, background:'rgba(255,255,255,0.45)', padding:6, borderRadius:6, minWidth:90, display:'flex', flexDirection:'column', gap:6, alignItems:'center', zIndex: 10 }}>
+            <div style={{ fontSize:11, opacity:0.8 }}>Pitch</div>
+            <input type="range" min="0" max="85" value={pitch} onChange={(e) => adjustPitch(e.target.value)} style={{ width:80 }} />
+            <div style={{ fontSize:11, opacity:0.8 }}>Proa</div>
+            <input type="range" min="0" max="360" value={bearing} onChange={(e) => adjustBearing(e.target.value)} style={{ width:80 }} />
           </div>
 
-          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Nome do ponto</label>
-          <input 
-            type="text" 
-            value={answer} 
-            onChange={(e) => { setAnswer(e.target.value); if(feedback) setFeedback(null); }} 
-            onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} 
-            style={{ padding:'6px', borderRadius:4, border: feedback === 'error' ? '1px solid red' : '1px solid #ccc', width: '100%', boxSizing: 'border-box' }} 
-            autoFocus 
-          />
-          
-          {feedback === 'error' && (
-              <div style={{ color: 'red', fontSize: '11px', marginTop: -4, fontWeight: 'bold' }}>Incorreto</div>
+          <div style={{ position:'absolute', top:160, right:10, background:'rgba(255,255,255,0.6)', padding:6, borderRadius:6, textAlign:'center', zIndex: 10 }}>
+            <div style={{ width:28, height:28, border:'2px solid rgba(0,0,0,0.6)', borderRadius:'50%', margin:'auto', position:'relative' }}>
+              <div style={{ position:'absolute', top:4, left:'50%', width:2, height:18, background:'red', transform:`translateX(-50%) rotate(${bearing}deg)` }} />
+            </div>
+            <div style={{ fontSize:12 }}>{bearing}°</div>
+          </div>
+
+          {currentPoint && (
+            <div style={{ position: 'absolute', top: '80px', left: '16px', background: 'white', padding: '8px', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', width: 'auto', maxWidth: '220px' }}>
+              
+              <div style={{ fontSize: '11px', color: '#666', marginBottom: 2, fontStyle: 'italic', fontWeight: 'bold' }}>
+                {getPointInfo(currentPoint)}
+              </div>
+
+              <label style={{ fontWeight: 'bold', fontSize: 13 }}>Nome do ponto</label>
+              <input 
+                type="text" 
+                value={answer} 
+                onChange={(e) => { setAnswer(e.target.value); if(feedback) setFeedback(null); }} 
+                onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} 
+                style={{ padding:'6px', borderRadius:4, border: feedback === 'error' ? '1px solid red' : '1px solid #ccc', width: '100%', boxSizing: 'border-box' }} 
+                autoFocus 
+              />
+              
+              {feedback === 'error' && (
+                  <div style={{ color: 'red', fontSize: '11px', marginTop: -4, fontWeight: 'bold' }}>Incorreto</div>
+              )}
+
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={checkAnswer} style={{ padding:'6px 12px', borderRadius:4, backgroundColor:'#4caf50', color:'white', border:'none', width: '100%', cursor:'pointer' }}>Responder</button>
+              </div>
+            </div>
           )}
 
-          <div style={{ display:'flex', gap:8 }}>
-            <button onClick={checkAnswer} style={{ padding:'6px 12px', borderRadius:4, backgroundColor:'#4caf50', color:'white', border:'none', width: '100%', cursor:'pointer' }}>Responder</button>
-          </div>
-        </div>
-      )}
-
-      <div className="scrollbar-hide" style={{ 
-          position:'absolute', 
-          bottom:0, 
-          left:0, 
-          right:0, 
-          background:'white', 
-          padding:'10px', 
-          display:'flex', 
-          alignItems:'center', 
-          gap:12, 
-          boxShadow:'0 -2px 6px rgba(0,0,0,0.15)', 
-          fontSize:14, 
-          zIndex: 30,
-          overflowX: 'auto',
-          whiteSpace: 'nowrap',
-          width: '100%',
-          boxSizing: 'border-box'
-      }}>
-        
-        <div 
-          onClick={startManualMode} 
-          style={{ 
-            display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '6px 10px', 
-            border: (!randomMode && !areaMode) ? '2px solid #4caf50' : '1px solid #ccc',
-            borderRadius: '6px',
-            backgroundColor: (!randomMode && !areaMode) ? '#e8f5e9' : 'transparent',
-            transition: 'all 0.2s',
-            flexShrink: 0
-          }}
-        >
-          <b>Manual</b>
-        </div>
-
-        <div 
-          onClick={() => { if(randomMode) stopRandomMode(); else startRandomMode(); }} 
-          style={{ 
-            display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '6px 10px', 
-            border: randomMode ? '2px solid #4caf50' : '1px solid #ccc',
-            borderRadius: '6px',
-            backgroundColor: randomMode ? '#e8f5e9' : 'transparent',
-            transition: 'all 0.2s',
-            flexShrink: 0
-          }}
-        >
-          <b>Aleatório</b>
-        </div>
-
-        <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink: 0 }}>
+          <div className="scrollbar-hide" style={{ 
+              position:'absolute', 
+              bottom:0, 
+              left:0, 
+              right:0, 
+              background:'white', 
+              padding:'10px', 
+              display:'flex', 
+              alignItems:'center', 
+              gap:12, 
+              boxShadow:'0 -2px 6px rgba(0,0,0,0.15)', 
+              fontSize:14, 
+              zIndex: 30,
+              overflowX: 'auto',
+              whiteSpace: 'nowrap',
+              width: '100%',
+              boxSizing: 'border-box'
+          }}>
+            
             <div 
-              onClick={() => { if(areaMode) stopAreaMode(); else startAreaMode(); }}
-              style={{
-                display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '6px 10px',
-                border: areaMode ? '2px solid #4caf50' : '1px solid #ccc',
+              onClick={startManualMode} 
+              style={{ 
+                display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '6px 10px', 
+                border: (!randomMode && !areaMode) ? '2px solid #4caf50' : '1px solid #ccc',
                 borderRadius: '6px',
-                backgroundColor: areaMode ? '#e8f5e9' : 'transparent',
-                transition: 'all 0.2s'
+                backgroundColor: (!randomMode && !areaMode) ? '#e8f5e9' : 'transparent',
+                transition: 'all 0.2s',
+                flexShrink: 0
               }}
             >
-              <b>Áreas</b>
+              <b>Manual</b>
             </div>
 
-            {areaMode && (
-                <label style={{ display:'flex', alignItems:'center', gap:4, fontSize: 12, cursor:'pointer' }} title="Sequência aleatória dentro da área atual">
-                    <input type="checkbox" checked={randomAreaSequence} onChange={(e) => setRandomAreaSequence(e.target.checked)} />
-                    Seq. Aleatória
-                </label>
-            )}
-
-            <select value={selectedArea} onChange={(e)=> setSelectedArea(e.target.value)} style={{ padding:'6px', borderRadius:4, maxWidth: '120px' }}>
-              {areaList.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-        </div>
-
-        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, cursor:'pointer', borderLeft: '1px solid #ddd', paddingLeft: 10, flexShrink: 0 }}>
-            <input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} />
-            <b>Às Cegas</b>
-        </label>
-
-        <button
-            onClick={triggerHint}
-            style={{
-                opacity: blindMode ? 1 : 0,
-                pointerEvents: blindMode ? 'auto' : 'none',
-                transition: 'opacity 0.3s ease',
-                padding: '6px 12px',
-                borderRadius: 4,
-                border: '1px solid #2196f3',
-                backgroundColor: '#e3f2fd',
-                color: '#1976d2',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: 12,
+            <div 
+              onClick={() => { if(randomMode) stopRandomMode(); else startRandomMode(); }} 
+              style={{ 
+                display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '6px 10px', 
+                border: randomMode ? '2px solid #4caf50' : '1px solid #ccc',
+                borderRadius: '6px',
+                backgroundColor: randomMode ? '#e8f5e9' : 'transparent',
+                transition: 'all 0.2s',
                 flexShrink: 0
-            }}
-        >
-            Dica
-        </button>
-
-        {/* Boundary Control */}
-        <div style={{ display:'flex', alignItems: 'center', flexShrink: 0, border: '1px solid #ffcc80', borderRadius: 6, overflow: 'hidden', height: '28px', backgroundColor: 'white' }}>
-            <div style={{ padding: '0 8px', fontSize: 11, background: '#fff3e0', color: '#e65100', display: 'flex', alignItems: 'center', height: '100%', fontWeight: 'bold', borderRight: '1px solid #ffcc80' }}>
-                Limites
-            </div>
-            <div
-                onClick={() => setBoundaryMode('all')}
-                style={{
-                    padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center',
-                    backgroundColor: boundaryMode === 'all' ? '#ffe0b2' : 'white',
-                    fontWeight: boundaryMode === 'all' ? 'bold' : 'normal',
-                    borderRight: '1px solid #ffcc80', color: '#e65100'
-                }}
+              }}
             >
-                Todos
+              <b>Aleatório</b>
             </div>
-            <div
-                onClick={() => setBoundaryMode('progressive')}
-                style={{
-                    padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center',
-                    backgroundColor: boundaryMode === 'progressive' ? '#ffe0b2' : 'white',
-                    fontWeight: boundaryMode === 'progressive' ? 'bold' : 'normal',
-                    borderRight: '1px solid #ffcc80', color: '#e65100'
-                }}
-            >
-                Progr.
-            </div>
-            <div
-                onClick={() => setBoundaryMode('none')}
-                style={{
-                    padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center',
-                    backgroundColor: boundaryMode === 'none' ? '#ffe0b2' : 'white',
-                    fontWeight: boundaryMode === 'none' ? 'bold' : 'normal',
-                    color: '#e65100'
-                }}
-            >
-                Off
-            </div>
-        </div>
 
-        <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto', flexShrink: 0 }}>Recomeçar</button>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink: 0 }}>
+                <div 
+                  onClick={() => { if(areaMode) stopAreaMode(); else startAreaMode(); }}
+                  style={{
+                    display:'flex', alignItems:'center', gap:4, cursor:'pointer', padding: '6px 10px',
+                    border: areaMode ? '2px solid #4caf50' : '1px solid #ccc',
+                    borderRadius: '6px',
+                    backgroundColor: areaMode ? '#e8f5e9' : 'transparent',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <b>Áreas</b>
+                </div>
 
-        <div style={{ minWidth:180, marginLeft: 10, flexShrink: 0 }}>
-          <select 
-            style={{ width:'100%', padding:6, borderRadius:4 }} 
-            onChange={(e)=>{ const pt=points.find(p=>p.id===e.target.value); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }}
-            value=""
-          >
-            <option value="">-- Ir para ponto --</option>
-            
-            {!areaMode ? (
-              <>
-                {missingPoints.length > 0 && (
-                    <optgroup label="Faltantes">
-                        {missingPoints.map(pt => (
-                            <option key={pt.id} value={pt.id}>{pt.name}</option>
-                        ))}
-                    </optgroup>
+                {areaMode && (
+                    <label style={{ display:'flex', alignItems:'center', gap:4, fontSize: 12, cursor:'pointer' }} title="Sequência aleatória dentro da área atual">
+                        <input type="checkbox" checked={randomAreaSequence} onChange={(e) => setRandomAreaSequence(e.target.checked)} />
+                        Seq. Aleatória
+                    </label>
                 )}
-                {answeredPoints.length > 0 && (
-                    <optgroup label="Respondidos">
-                        {answeredPoints.map(pt => (
-                            <option key={pt.id} value={pt.id}>{pt.name} ✅</option>
-                        ))}
-                    </optgroup>
-                )}
-              </>
-            ) : (
-              <>
-                {Object.entries(AREAS).map(([areaName, areaPointsNames]) => {
-                    const areaPointsIds = areaPointsNames.map(n => nameToPointId(n)).filter(Boolean);
-                    const areaMissing = areaPointsIds.filter(id => !guessed.includes(id));
-                    const areaGuessed = areaPointsIds.filter(id => guessed.includes(id));
-                    
-                    areaMissing.sort((a,b) => { 
-                        const pa = points.find(p=>p.id===a); const pb = points.find(p=>p.id===b);
-                        return pa.name.localeCompare(pb.name);
-                    });
-                    areaGuessed.sort((a,b) => { 
-                        const pa = points.find(p=>p.id===a); const pb = points.find(p=>p.id===b);
-                        return pa.name.localeCompare(pb.name);
-                    });
 
-                    return (
-                        <optgroup key={areaName} label={areaName}>
-                            {areaMissing.map(id => {
-                                const pt = points.find(p => p.id === id);
-                                return <option key={id} value={id}>{pt.name}</option>;
-                            })}
-                            {areaGuessed.map(id => {
-                                const pt = points.find(p => p.id === id);
-                                return <option key={id} value={id}>{pt.name} ✅</option>;
-                            })}
+                <select value={selectedArea} onChange={(e)=> setSelectedArea(e.target.value)} style={{ padding:'6px', borderRadius:4, maxWidth: '120px' }}>
+                  {areaList.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+            </div>
+
+            <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, cursor:'pointer', borderLeft: '1px solid #ddd', paddingLeft: 10, flexShrink: 0 }}>
+                <input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} />
+                <b>Às Cegas</b>
+            </label>
+
+            <button
+                onClick={triggerHint}
+                style={{
+                    opacity: blindMode ? 1 : 0,
+                    pointerEvents: blindMode ? 'auto' : 'none',
+                    transition: 'opacity 0.3s ease',
+                    padding: '6px 12px',
+                    borderRadius: 4,
+                    border: '1px solid #2196f3',
+                    backgroundColor: '#e3f2fd',
+                    color: '#1976d2',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: 12,
+                    flexShrink: 0
+                }}
+            >
+                Dica
+            </button>
+
+            {/* Boundary Control */}
+            <div style={{ display:'flex', alignItems: 'center', flexShrink: 0, border: '1px solid #ffcc80', borderRadius: 6, overflow: 'hidden', height: '28px', backgroundColor: 'white' }}>
+                <div style={{ padding: '0 8px', fontSize: 11, background: '#fff3e0', color: '#e65100', display: 'flex', alignItems: 'center', height: '100%', fontWeight: 'bold', borderRight: '1px solid #ffcc80' }}>
+                    Limites
+                </div>
+                <div
+                    onClick={() => setBoundaryMode('all')}
+                    style={{
+                        padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center',
+                        backgroundColor: boundaryMode === 'all' ? '#ffe0b2' : 'white',
+                        fontWeight: boundaryMode === 'all' ? 'bold' : 'normal',
+                        borderRight: '1px solid #ffcc80', color: '#e65100'
+                    }}
+                >
+                    Todos
+                </div>
+                <div
+                    onClick={() => setBoundaryMode('progressive')}
+                    style={{
+                        padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center',
+                        backgroundColor: boundaryMode === 'progressive' ? '#ffe0b2' : 'white',
+                        fontWeight: boundaryMode === 'progressive' ? 'bold' : 'normal',
+                        borderRight: '1px solid #ffcc80', color: '#e65100'
+                    }}
+                >
+                    Progr.
+                </div>
+                <div
+                    onClick={() => setBoundaryMode('none')}
+                    style={{
+                        padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center',
+                        backgroundColor: boundaryMode === 'none' ? '#ffe0b2' : 'white',
+                        fontWeight: boundaryMode === 'none' ? 'bold' : 'normal',
+                        color: '#e65100'
+                    }}
+                >
+                    Off
+                </div>
+            </div>
+
+            <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto', flexShrink: 0 }}>Recomeçar</button>
+
+            <div style={{ minWidth:180, marginLeft: 10, flexShrink: 0 }}>
+              <select 
+                style={{ width:'100%', padding:6, borderRadius:4 }} 
+                onChange={(e)=>{ const pt=points.find(p=>p.id===e.target.value); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }}
+                value=""
+              >
+                <option value="">-- Ir para ponto --</option>
+                
+                {!areaMode ? (
+                  <>
+                    {missingPoints.length > 0 && (
+                        <optgroup label="Faltantes">
+                            {missingPoints.map(pt => (
+                                <option key={pt.id} value={pt.id}>{pt.name}</option>
+                            ))}
                         </optgroup>
-                    );
-                })}
+                    )}
+                    {answeredPoints.length > 0 && (
+                        <optgroup label="Respondidos">
+                            {answeredPoints.map(pt => (
+                                <option key={pt.id} value={pt.id}>{pt.name} ✅</option>
+                            ))}
+                        </optgroup>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {Object.entries(AREAS).map(([areaName, areaPointsNames]) => {
+                        const areaPointsIds = areaPointsNames.map(n => nameToPointId(n)).filter(Boolean);
+                        const areaMissing = areaPointsIds.filter(id => !guessed.includes(id));
+                        const areaGuessed = areaPointsIds.filter(id => guessed.includes(id));
+                        
+                        areaMissing.sort((a,b) => { 
+                            const pa = points.find(p=>p.id===a); const pb = points.find(p=>p.id===b);
+                            return pa.name.localeCompare(pb.name);
+                        });
+                        areaGuessed.sort((a,b) => { 
+                            const pa = points.find(p=>p.id===a); const pb = points.find(p=>p.id===b);
+                            return pa.name.localeCompare(pb.name);
+                        });
 
-                {otherPointsList.length > 0 && (
-                    <optgroup label="DEMAIS PONTOS">
-                        {otherPointsList.filter(p => !guessed.includes(p.id)).map(pt => (
-                            <option key={pt.id} value={pt.id}>{pt.name}</option>
-                        ))}
-                        {otherPointsList.filter(p => guessed.includes(p.id)).map(pt => (
-                            <option key={pt.id} value={pt.id}>{pt.name} ✅</option>
-                        ))}
-                    </optgroup>
+                        return (
+                            <optgroup key={areaName} label={areaName}>
+                                {areaMissing.map(id => {
+                                    const pt = points.find(p => p.id === id);
+                                    return <option key={id} value={id}>{pt.name}</option>;
+                                })}
+                                {areaGuessed.map(id => {
+                                    const pt = points.find(p => p.id === id);
+                                    return <option key={id} value={id}>{pt.name} ✅</option>;
+                                })}
+                            </optgroup>
+                        );
+                    })}
+
+                    {otherPointsList.length > 0 && (
+                        <optgroup label="DEMAIS PONTOS">
+                            {otherPointsList.filter(p => !guessed.includes(p.id)).map(pt => (
+                                <option key={pt.id} value={pt.id}>{pt.name}</option>
+                            ))}
+                            {otherPointsList.filter(p => guessed.includes(p.id)).map(pt => (
+                                <option key={pt.id} value={pt.id}>{pt.name} ✅</option>
+                            ))}
+                        </optgroup>
+                    )}
+                  </>
                 )}
-              </>
-            )}
 
-          </select>
-        </div>
+              </select>
+            </div>
 
-        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, flexShrink: 0 }}>
-          <input type="checkbox" checked={showKey} onChange={(e)=> revealAll(e.target.checked)} /> Gabarito
-        </label>
+            <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, flexShrink: 0 }}>
+              <input type="checkbox" checked={showKey} onChange={(e)=> revealAll(e.target.checked)} /> Gabarito
+            </label>
 
-        {/* New Checkbox */}
-        <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, flexShrink: 0 }}>
-          <input type="checkbox" checked={showTerrain} onChange={(e)=> setShowTerrain(e.target.checked)} /> Relevo
-        </label>
-      </div>
+            {/* New Checkbox */}
+            <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, flexShrink: 0 }}>
+              <input type="checkbox" checked={showTerrain} onChange={(e)=> setShowTerrain(e.target.checked)} /> Relevo
+            </label>
+          </div>
+        </>
+      )}
     </div>
   );
 }
