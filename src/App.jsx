@@ -84,7 +84,12 @@ export default function App() {
   const [feedback, setFeedback] = useState(null);
   const [showCompletion, setShowCompletion] = useState(false);
   const [finalTime, setFinalTime] = useState(0);
+  
+  // Definição das Áreas (Restaurada)
   const [selectedArea, setSelectedArea] = useState('Capricornio');
+  const areaList = Object.keys(AREAS); // Restaurado
+  const [areaIndex, setAreaIndex] = useState(0); // Restaurado
+  
   const [areaPointIndex, setAreaPointIndex] = useState(0);
   const [areaQueue, setAreaQueue] = useState([]);
 
