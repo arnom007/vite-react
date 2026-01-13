@@ -32,6 +32,7 @@ const AREAS = {
   Aquarius: getPointsByKeyword('Aquarius'), 
   Peixes: getPointsByKeyword('Peixes'),
   Taurus: getPointsByKeyword('Taurus'),
+  Tobogã: getPointsByKeyword('Tobogã'), // Nova área adicionada
   'Tráfego AFA': getPointsByKeyword('Tráfego AFA')
 };
 
@@ -39,7 +40,8 @@ const AREA_LIMITS = {
   Capricornio: ['Trevo Aguaí Anhanguera', 'Leme', 'Araras', 'Cordeirópolis', 'Ipeúna', 'Lagoa na SP-225', 'Itirapina', 'Analândia'],
   Aquarius: ['Trevo Aguaí Anhanguera', 'Analândia', 'Itirapina', 'Lagoa na SP-225', 'Fazenda Brotas', 'Américo Brasiliense', 'Descalvado', 'Porto Ferreira'],
   Peixes: ['Porto Ferreira', 'Pedágio São Simão', 'Rincão', 'Américo Brasiliense', 'Descalvado'],
-  Taurus: ['Porto Ferreira', 'Pedágio São Simão', 'Santa Cruz da Esperança', 'Fazenda da Serra', 'Mococa', 'Santa Rosa do Viterbo', 'Santa Rita do Passa Quatro']
+  Taurus: ['Porto Ferreira', 'Pedágio São Simão', 'Santa Cruz da Esperança', 'Fazenda da Serra', 'Mococa', 'Santa Rosa do Viterbo', 'Santa Rita do Passa Quatro'],
+  Tobogã: ['Trevo Aguaí Anhanguera', 'Analândia', 'Descalvado', 'Porto Ferreira'] // Nova sequência de limites
 };
 
 const STATIC_ROUTES = {
@@ -85,10 +87,10 @@ export default function App() {
   const [showCompletion, setShowCompletion] = useState(false);
   const [finalTime, setFinalTime] = useState(0);
   
-  // Definição das Áreas (Restaurada)
+  // Definição das Áreas
   const [selectedArea, setSelectedArea] = useState('Capricornio');
-  const areaList = Object.keys(AREAS); // Restaurado
-  const [areaIndex, setAreaIndex] = useState(0); // Restaurado
+  const areaList = Object.keys(AREAS);
+  const [areaIndex, setAreaIndex] = useState(0);
   
   const [areaPointIndex, setAreaPointIndex] = useState(0);
   const [areaQueue, setAreaQueue] = useState([]);
