@@ -1,6 +1,5 @@
 // Gestão de Pontos do Mapa Interativo
-// Classificação: Use os emojis ⚠️ para pontos de tráfego e 📍 para limites
-// Aliases: Palavras-chave para aceitar a resposta (sempre minúsculas e sem acento)
+// Exporta a lista de pontos para ser usada no App.jsx
 
 export const pointsData = [
   { id: 1, name: 'Júpiter', aliases: ['jupiter'], coords: [-47.4500, -21.9878], info: 'Ponto da área de Tráfego AFA' },
@@ -28,7 +27,7 @@ export const pointsData = [
   { id: 27, name: 'Mococa', aliases: ['mococa'], coords: [-47.0003, -21.4756], info: 'Limite da área de Taurus 📍' },
   { id: 28, name: 'Santa Rosa do Viterbo', aliases: ['santa rosa do viterbo'], coords: [-47.3661, -21.5010], info: 'Limite da área de Taurus 📍' },
   { id: 29, name: 'Santa Rita do Passa Quatro', aliases: ['santa rita do passa quatro'], coords: [-47.4803, -21.7086], info: 'Limite da área de Taurus 📍' },
-  { id: 30, name: 'Porto Ferreira', aliases: ['porto ferreira'], coords: [-47.4833, -21.8570], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Taurus 📍' },
+  { id: 30, name: 'Porto Ferreira', aliases: ['porto ferreira'], coords: [-47.4833, -21.8570], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Taurus 📍 | Limite da área de Tobogã 📍' },
   { id: 31, name: 'Leme', aliases: ['leme'], coords: [-47.3847, -22.1811], info: 'Limite da área de Capricórnio 📍' },
   { id: 32, name: 'Brotas', aliases: ['brotas'], coords: [-48.1253, -22.2861], info: 'Ponto Isolado' },
   { id: 33, name: 'Iracemópolis', aliases: ['iracemopolis'], coords: [-47.5197, -22.5872], info: 'Ponto Isolado' },
@@ -36,8 +35,8 @@ export const pointsData = [
   { id: 35, name: 'Rio Claro', aliases: ['rio claro'], coords: [-47.5636, -22.4042], info: 'Ponto da área de Capricornio' },
   { id: 36, name: 'Araras', aliases: ['araras'], coords: [-47.3811, -22.3647], info: 'Limite da área de Capricórnio 📍' },
   { id: 37, name: 'Santa Cruz da Conceição', aliases: ['santa cruz da conceicao'], coords: [-47.4517, -22.1378], info: 'Ponto da área de Capricornio' },
-  { id: 38, name: 'Analândia', aliases: ['analandia'], coords: [-47.6611, -22.1294], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍' },
-  { id: 39, name: 'Trevo Aguaí Anhanguera', aliases: ['trevo aguai anhanguera'], coords: [-47.4320, -22.0383], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍 | Ponto da área de Tráfego AFA' },
+  { id: 38, name: 'Analândia', aliases: ['analandia'], coords: [-47.6611, -22.1294], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍 | Limite da área de Tobogã 📍' },
+  { id: 39, name: 'Trevo Aguaí Anhanguera', aliases: ['trevo aguai anhanguera'], coords: [-47.4320, -22.0383], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍 | Ponto da área de Tráfego AFA | Limite da área de Tobogã 📍' },
   { id: 40, name: 'Itirapina', aliases: ['itirapina'], coords: [-47.8158, -22.2575], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍' },
   { id: 41, name: 'Araraquara', aliases: ['araraquara'], coords: [-48.1670, -21.7894], info: 'Ponto Isolado' },
   { id: 42, name: 'São Carlos', aliases: ['sao carlos'], coords: [-47.8903, -22.0164], info: 'Ponto da área de Aquarius' },
@@ -59,5 +58,5 @@ export const pointsData = [
   { id: 59, name: 'São Simão', aliases: ['sao simao'], coords: [-47.5556, -21.4794], info: 'Ponto da área de Taurus' },
   { id: 60, name: 'Sumidouro', aliases: ['sumidouro'], coords: [-47.3467, -21.9636], info: 'Ponto da área de Tráfego AFA' },
   { id: 61, name: 'Estrada SO/SGT', aliases: ['estrada so sgt'], coords: [-47.3447, -22.0067], info: 'Ponto da área de Tráfego AFA' },
-  { id: 62, name: 'Descalvado', aliases: ['descalvado'], coords: [-47.6258, -21.9117], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍' },
+  { id: 62, name: 'Descalvado', aliases: ['descalvado'], coords: [-47.6258, -21.9117], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Tobogã 📍' },
 ];
