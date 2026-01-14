@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
-import { pointsData } from "./points"; // Importa os dados
+import { pointsData } from "./points"; 
 
 // Lista de chaves API para rotação/fallback
 const API_KEYS = [
-  "YHlTRP429Wo5PZXGJklr", // Key 1
-  "YS0YNd7SKoqGfXhdY8Bx", // Key 2
-  "R13imFP2SenJH9JsgVkN"  // Key 3
+  "YHlTRP429Wo5PZXGJklr", 
+  "YS0YNd7SKoqGfXhdY8Bx", 
+  "R13imFP2SenJH9JsgVkN"
 ];
 
 const INITIAL_CENTER = [-47.6, -22.0];
@@ -32,7 +32,13 @@ const AREAS = {
   Aquarius: getPointsByKeyword('Aquarius'), 
   Peixes: getPointsByKeyword('Peixes'),
   Taurus: getPointsByKeyword('Taurus'),
-  Tobogã: getPointsByKeyword('Tobogã'), // Nova área adicionada
+  Tobogã: getPointsByKeyword('Tobogã'),
+  'Capricórnio W': getPointsByKeyword('Capricórnio W'),
+  'Aquárius W': getPointsByKeyword('Aquárius W'),
+  'Peixes W': getPointsByKeyword('Peixes W'),
+  'Libra Alta': getPointsByKeyword('Libra Alta'),
+  'Virgem Alta': getPointsByKeyword('Virgem Alta'),
+  'Gêmeos Alta': getPointsByKeyword('Gêmeos Alta'),
   'Tráfego AFA': getPointsByKeyword('Tráfego AFA')
 };
 
@@ -41,15 +47,40 @@ const AREA_LIMITS = {
   Aquarius: ['Trevo Aguaí Anhanguera', 'Analândia', 'Itirapina', 'Lagoa na SP-225', 'Fazenda Brotas', 'Américo Brasiliense', 'Descalvado', 'Porto Ferreira'],
   Peixes: ['Porto Ferreira', 'Pedágio São Simão', 'Rincão', 'Américo Brasiliense', 'Descalvado'],
   Taurus: ['Porto Ferreira', 'Pedágio São Simão', 'Santa Cruz da Esperança', 'Fazenda da Serra', 'Mococa', 'Santa Rosa do Viterbo', 'Santa Rita do Passa Quatro'],
-  Tobogã: ['Trevo Aguaí Anhanguera', 'Analândia', 'Descalvado', 'Porto Ferreira'] // Nova sequência de limites
+  Tobogã: ['Trevo Aguaí Anhanguera', 'Analândia', 'Descalvado', 'Porto Ferreira'],
+  
+  // Novas Áreas W
+  'Capricórnio W': ['Cordeirópolis', 'Ipeúna', 'Lagoa na SP-225', 'Brotas', 'Iracemópolis'],
+  'Aquárius W': ['Lagoa na SP-225', 'Brotas', 'Matão', 'Araraquara', 'Américo Brasiliense', 'Fazenda Brotas'],
+  'Peixes W': ['Pedágio São Simão', 'Guatapará', 'Matão', 'Araraquara', 'Américo Brasiliense', 'Rincão'],
+
+  // Novas Áreas Altas
+  'Libra Alta': ['Santa Cruz das Palmeiras', 'Tambaú', 'Santa Rosa do Viterbo', 'Mococa', 'São Sebastião da Grama', 'Casa Branca'],
+  'Virgem Alta': ['Santa Cruz das Palmeiras', 'Casa Branca', 'São Sebastião da Grama', 'São João da Boa Vista', 'Aguaí', 'Ponte na Aguaí sobre Rio Mogi'],
+  'Gêmeos Alta': ['Ponte na Aguaí sobre Rio Mogi', 'Casa Branca', 'São João da Boa Vista', 'Mogi-guaçu', 'Conchal']
 };
 
 const STATIC_ROUTES = {
-  '30-52': [ // Porto Ferreira <-> Pedágio São Simão (IDs atualizados)
-    [-47.4833, -21.8570], [-47.4950, -21.8400], [-47.5120, -21.8150], [-47.5350, -21.7800],
-    [-47.5500, -21.7400], [-47.5650, -21.7000], [-47.5800, -21.6600], [-47.6000, -21.6000],
-    [-47.6200, -21.5400], [-47.6400, -21.4800], [-47.6550, -21.4400], [-47.6642, -21.4144]
+  '30-52': [ // Porto Ferreira <-> Pedágio São Simão (Traçado exato)
+    [-47.4721, -21.8490], [-47.4824, -21.8350], [-47.4851, -21.8317], [-47.4863, -21.8300],
+    [-47.4876, -21.8282], [-47.4882, -21.8274], [-47.4890, -21.8265], [-47.4897, -21.8257],
+    [-47.4903, -21.8248], [-47.4910, -21.8239], [-47.4918, -21.8231], [-47.4924, -21.8225],
+    [-47.4929, -21.8216], [-47.4933, -21.8211], [-47.4937, -21.8205], [-47.4946, -21.8196],
+    [-47.4956, -21.8187], [-47.4965, -21.8178], [-47.4967, -21.8174], [-47.4970, -21.8168],
+    [-47.4973, -21.8158], [-47.4976, -21.8138], [-47.5017, -21.8066], [-47.5071, -21.8001],
+    [-47.5145, -21.7944], [-47.5705, -21.7509], [-47.5817, -21.7389], [-47.5882, -21.7228],
+    [-47.5989, -21.6928], [-47.6043, -21.6777], [-47.6071, -21.6700], [-47.6084, -21.6622],
+    [-47.6108, -21.6463], [-47.6136, -21.6308], [-47.6155, -21.6199], [-47.6163, -21.6133],
+    [-47.6181, -21.6088], [-47.6284, -21.5785], [-47.6380, -21.5516], [-47.6425, -21.5245],
+    [-47.6398, -21.4714], [-47.6495, -21.4424], [-47.6543, -21.4273], [-47.6643, -21.4144]
   ]
+};
+
+// Helper de Cores das Áreas
+const getAreaColor = (areaName) => {
+  if (areaName.includes('W')) return '#9c27b0'; // Roxo
+  if (areaName.includes('Alta')) return '#f44336'; // Vermelho
+  return '#2196f3'; // Azul (Padrão)
 };
 
 export default function App() {
@@ -57,13 +88,10 @@ export default function App() {
   const map = useRef(null);
   const markersRef = useRef(new Map());
 
-  // Estado da Chave API
   const [currentKeyIndex, setCurrentKeyIndex] = useState(0);
   const [mapError, setMapError] = useState(false);
-
   const activeKey = API_KEYS[currentKeyIndex];
 
-  // Estados do Jogo
   const MAP_DECLINATION = 20;
   const [guessed, setGuessed] = useState([]);
   const [currentPoint, setCurrentPoint] = useState(null);
@@ -87,7 +115,6 @@ export default function App() {
   const [showCompletion, setShowCompletion] = useState(false);
   const [finalTime, setFinalTime] = useState(0);
   
-  // Definição das Áreas
   const [selectedArea, setSelectedArea] = useState('Capricornio');
   const areaList = Object.keys(AREAS);
   const [areaIndex, setAreaIndex] = useState(0);
@@ -120,7 +147,6 @@ export default function App() {
 
   const getPointInfo = (point) => point ? (point.info || "Ponto Isolado") : "";
 
-  // Helper de ordenação de áreas
   const getSortedAreaIds = (areaName) => {
     const allNames = AREAS[areaName] || [];
     const limitNames = AREA_LIMITS[areaName] || [];
@@ -160,7 +186,8 @@ export default function App() {
   useEffect(() => {
     if (!isMapLoaded || !map.current) return;
 
-    const updateLayer = (areaName, limitNames) => {
+    // Atualiza as camadas normais das áreas
+    Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => {
         const source = map.current.getSource(`source-${areaName}`);
         if (!source) return;
 
@@ -199,16 +226,37 @@ export default function App() {
             }
         }
         source.setData({ 'type': 'FeatureCollection', 'features': features });
-    };
+    });
 
-    Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => updateLayer(areaName, limitNames));
+    // Atualiza a Linha Extra (Vermelha) - Santa Cruz das Palmeiras <-> Porto Ferreira
+    const extraSource = map.current.getSource('source-extra-red');
+    if (extraSource) {
+        const p1 = points.find(p => p.id === 63); // Santa Cruz das Palmeiras
+        const p2 = points.find(p => p.id === 30); // Porto Ferreira
+        let features = [];
+        
+        if (p1 && p2) {
+             let isVisible = false;
+             if (boundaryMode === 'all') isVisible = true;
+             else if (boundaryMode === 'none') isVisible = false;
+             else if (boundaryMode === 'progressive') isVisible = guessed.includes(63) && guessed.includes(30);
+
+             if (isVisible) {
+                 features.push({
+                    type: 'Feature',
+                    geometry: { type: 'LineString', coordinates: [p1.coords, p2.coords] }
+                 });
+             }
+        }
+        extraSource.setData({ 'type': 'FeatureCollection', 'features': features });
+    }
+
   }, [isMapLoaded, guessed, boundaryMode]);
 
   // MAP INITIALIZATION
   useEffect(() => {
-    if (mapError) return; // Se já falhou todas, não tenta mais
+    if (mapError) return; 
 
-    // Limpa mapa anterior se existir (ao trocar chave)
     if (map.current) {
         map.current.remove();
         map.current = null;
@@ -223,33 +271,27 @@ export default function App() {
           container: mapContainer.current,
           style: `https://api.maptiler.com/maps/satellite/style.json?key=${activeKey}`,
           center: INITIAL_CENTER,
-          zoom: 9.5, 
+          zoom: 8.5, // Zoom um pouco menor para ver novas áreas
           pitch,
           bearing: bearing - MAP_DECLINATION,
           maxPitch: 85, 
         });
 
-        // Handler de Erro de Carregamento (Troca de Chave)
         map.current.on('error', (e) => {
-            // Verifica se é erro de acesso/permissão ou estilo
             if (e.error && (e.error.status === 403 || e.error.status === 429 || (e.error.message && e.error.message.includes('Forbidden')))) {
-                console.warn(`Erro na chave ${currentKeyIndex}:`, e.error);
-                if (currentKeyIndex < API_KEYS.length - 1) {
-                    setCurrentKeyIndex(prev => prev + 1);
-                } else {
-                    setMapError(true);
-                }
+                if (currentKeyIndex < API_KEYS.length - 1) setCurrentKeyIndex(prev => prev + 1);
+                else setMapError(true);
             }
         });
 
         map.current.on('load', () => {
-          console.log("Mapa carregado com sucesso!");
           map.current.addSource('terrain', {
               "type": "raster-dem",
               "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${activeKey}`,
               "tileSize": 512
           });
 
+          // Adiciona Camadas das Áreas
           Object.keys(AREA_LIMITS).forEach(areaName => {
               map.current.addSource(`source-${areaName}`, {
                 'type': 'geojson',
@@ -260,10 +302,28 @@ export default function App() {
                 'type': 'line',
                 'source': `source-${areaName}`,
                 'layout': { 'line-join': 'round', 'line-cap': 'round' },
-                'paint': { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0.3 }
+                'paint': { 
+                    'line-color': getAreaColor(areaName), // Cor baseada no nome da área
+                    'line-width': 3, 
+                    'line-opacity': 0.6 
+                }
               });
           });
 
+          // Adiciona Camada Extra Vermelha (Santa Cruz <-> Porto Ferreira)
+          map.current.addSource('source-extra-red', {
+            'type': 'geojson',
+            'data': { 'type': 'FeatureCollection', 'features': [] }
+          });
+          map.current.addLayer({
+            'id': 'layer-extra-red',
+            'type': 'line',
+            'source': 'source-extra-red',
+            'layout': { 'line-join': 'round', 'line-cap': 'round' },
+            'paint': { 'line-color': '#f44336', 'line-width': 3, 'line-opacity': 0.6 }
+          });
+
+          // Marcadores
           points.forEach(point => {
             const el = document.createElement('div');
             el.className = 'marker-root';
@@ -339,7 +399,7 @@ export default function App() {
       if (map.current) map.current.remove();
       map.current = null;
     };
-  }, [currentKeyIndex]); // Recria o mapa se o índice da chave mudar
+  }, [currentKeyIndex]);
 
   // Marker Update Logic
   useEffect(() => {
@@ -516,9 +576,8 @@ export default function App() {
              const nextAreaIdx = (areaList.indexOf(selectedArea) + 1) % areaList.length;
              setAreaIndex(nextAreaIdx);
              const nextAreaName = areaList[nextAreaIdx];
-             setSelectedArea(nextAreaName); // This triggers useEffect for queue
+             setSelectedArea(nextAreaName); 
              
-             // Manually compute next queue to prevent 1-render lag
              const nextIds = getSortedAreaIds(nextAreaName);
              const availableNext = nextIds.filter(id => !updated.includes(id));
              if (availableNext.length > 0) {
