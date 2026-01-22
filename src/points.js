@@ -31,7 +31,7 @@ export const pointsData = [
   { id: 30, name: 'Porto Ferreira', aliases: ['porto ferreira'], coords: [-47.4833, -21.8570], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Taurus 📍 | Limite da área de Tobogã 📍 | Ponto de Ligação Alta' },
   { id: 31, name: 'Leme', aliases: ['leme'], coords: [-47.3847, -22.1811], info: 'Limite da área de Capricórnio 📍' },
   { id: 32, name: 'Brotas', aliases: ['brotas'], coords: [-48.1275, -22.2817], info: 'Limite da área de Capricórnio W 📍 | Limite da área de Aquárius W 📍' }, // Coords Atualizadas
-  { id: 33, name: 'Iracemópolis', aliases: ['iracemopolis'], coords: [-47.5136, -22.5872], info: 'Limite da área de Capricórnio W 📍' }, // Coords Atualizadas
+  { id: 33, name: 'Iracemápolis', aliases: ['iracemapolis'], coords: [-47.5136, -22.5872], info: 'Limite da área de Capricórnio W 📍' }, // Coords Atualizadas
   { id: 34, name: 'Cordeirópolis', aliases: ['cordeiropolis'], coords: [-47.4578, -22.4822], info: 'Limite da área de Capricórnio 📍 | Limite da área de Capricórnio W 📍' },
   { id: 35, name: 'Rio Claro', aliases: ['rio claro'], coords: [-47.5636, -22.4042], info: 'Ponto da área de Capricornio' },
   { id: 36, name: 'Araras', aliases: ['araras'], coords: [-47.3811, -22.3647], info: 'Limite da área de Capricórnio 📍' },
