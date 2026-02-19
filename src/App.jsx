@@ -548,4 +548,43 @@ export default function App() {
             <div style={{ display:'flex', alignItems: 'center', border: '1px solid #ffcc80', borderRadius: 6, overflow: 'hidden', height: '28px', backgroundColor: 'white' }}>
                 <div style={{ padding: '0 8px', fontSize: 11, background: '#fff3e0', color: '#e65100', display: 'flex', alignItems: 'center', height: '100%', fontWeight: 'bold' }}>Limites</div>
                 {['all', 'progressive', 'none'].map(mode => (
-                    <div key={mode} onClick={() => setBoundaryMode(mode)} style={{ padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center',
+                    <div key={mode} onClick={() => setBoundaryMode(mode)} style={{ padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center', backgroundColor: boundaryMode === mode ? '#ffe0b2' : 'white', fontWeight: boundaryMode === mode ? 'bold' : 'normal', color: '#e65100' }}>
+                        {mode === 'all' ? 'Todos' : mode === 'progressive' ? 'Progr.' : 'Off'}
+                    </div>
+                ))}
+            </div>
+
+            <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto' }}>Recomeçar</button>
+            <div style={{ minWidth:180, marginLeft: 10 }}>
+              <select style={{ width:'100%', padding:6, borderRadius:4 }} onChange={(e)=>{ const pt=activePointsData.find(p=>p.id===Number(e.target.value)); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }} value="">
+                <option value="">-- Ir para ponto --</option>
+                {!areaMode ? (
+                  <>
+                    {missingPoints.length > 0 && <optgroup label="Faltantes">{missingPoints.map(pt => <option key={pt.id} value={pt.id}>{pt.name}</option>)}</optgroup>}
+                    {answeredPoints.length > 0 && <optgroup label="Respondidos">{answeredPoints.map(pt => <option key={pt.id} value={pt.id}>{pt.name} ✅</option>)}</optgroup>}
+                  </>
+                ) : (
+                  <>
+                    {Object.entries(activeAreas).map(([areaName, areaPointsNames]) => {
+                        const areaPointsIds = areaPointsNames.map(n => nameToPointId(n)).filter(Boolean);
+                        const areaMissing = areaPointsIds.filter(id => !guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a).name.localeCompare(activePointsData.find(p=>p.id===b).name));
+                        const areaGuessed = areaPointsIds.filter(id => guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a).name.localeCompare(activePointsData.find(p=>p.id===b).name));
+                        return (
+                            <optgroup key={areaName} label={areaName}>
+                                {areaMissing.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id).name}</option>)}
+                                {areaGuessed.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id).name} ✅</option>)}
+                            </optgroup>
+                        );
+                    })}
+                  </>
+                )}
+              </select>
+            </div>
+            <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10 }}><input type="checkbox" checked={showKey} onChange={(e)=> revealAll(e.target.checked)} /> Gabarito</label>
+            <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10 }}><input type="checkbox" checked={showTerrain} onChange={(e)=> setShowTerrain(e.target.checked)} /> Relevo</label>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
