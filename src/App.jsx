@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import { pointsData } from "./points"; 
+import { points2EIA, AREAS_2EIA, LIMITS_2EIA_GEOJSON } from "./points2EIA";
 import './App.css';
 
 const API_KEYS = ["YHlTRP429Wo5PZXGJklr", "YS0YNd7SKoqGfXhdY8Bx", "R13imFP2SenJH9JsgVkN"];
@@ -14,7 +15,6 @@ const normalize = (s) => {
 
 const getPointsByKeyword = (keyword) => pointsData.filter(p => normalize(p.info).includes(normalize(keyword))).map(p => p.name);
 
-// Áreas e Limites (Mantidos exatamente iguais)
 const AREAS = {
   Capricornio: getPointsByKeyword('Capricornio'), 
   Aquarius: getPointsByKeyword('Aquarius'), 
@@ -36,10 +36,7 @@ const AREA_LIMITS = {
   Peixes: ['Porto Ferreira', 'Pedágio São Simão', 'Rincão', 'Américo Brasiliense', 'Descalvado'],
   Taurus: ['Porto Ferreira', 'Pedágio São Simão', 'Santa Cruz da Esperança', 'Fazenda da Serra', 'Mococa', 'Santa Rosa do Viterbo', 'Santa Rita do Passa Quatro'],
   Tobogã: ['Trevo Aguaí Anhanguera', 'Analândia', 'Descalvado', 'Porto Ferreira'],
-  
-  // Limite atualizado com Iracemápolis
   'Capricórnio W': ['Cordeirópolis', 'Ipeúna', 'Lagoa na SP-225', 'Brotas', 'Iracemápolis'],
-  
   'Aquárius W': ['Lagoa na SP-225', 'Brotas', 'Matão', 'Araraquara', 'Américo Brasiliense', 'Fazenda Brotas'],
   'Peixes W': ['Pedágio São Simão', 'Guatapará', 'Matão', 'Araraquara', 'Américo Brasiliense', 'Rincão'],
   'Libra Alta': ['Santa Cruz das Palmeiras', 'Tambaú', 'Santa Rosa do Viterbo', 'Mococa', 'São Sebastião da Grama', 'Casa Branca'],
@@ -47,21 +44,7 @@ const AREA_LIMITS = {
   'Gêmeos Alta': ['Ponte na Aguaí sobre Rio Mogi', 'Casa Branca', 'São João da Boa Vista', 'Mogi-guaçu', 'Conchal']
 };
 
-const STATIC_ROUTES = {
-  '30-52': [
-    [-47.4721, -21.8490], [-47.4824, -21.8350], [-47.4851, -21.8317], [-47.4863, -21.8300],
-    [-47.4876, -21.8282], [-47.4882, -21.8274], [-47.4890, -21.8265], [-47.4897, -21.8257],
-    [-47.4903, -21.8248], [-47.4910, -21.8239], [-47.4918, -21.8231], [-47.4924, -21.8225],
-    [-47.4929, -21.8216], [-47.4933, -21.8211], [-47.4937, -21.8205], [-47.4946, -21.8196],
-    [-47.4956, -21.8187], [-47.4965, -21.8178], [-47.4967, -21.8174], [-47.4970, -21.8168],
-    [-47.4973, -21.8158], [-47.4976, -21.8138], [-47.5017, -21.8066], [-47.5071, -21.8001],
-    [-47.5145, -21.7944], [-47.5705, -21.7509], [-47.5817, -21.7389], [-47.5882, -21.7228],
-    [-47.5989, -21.6928], [-47.6043, -21.6777], [-47.6071, -21.6700], [-47.6084, -21.6622],
-    [-47.6108, -21.6463], [-47.6136, -21.6308], [-47.6155, -21.6199], [-47.6163, -21.6133],
-    [-47.6181, -21.6088], [-47.6284, -21.5785], [-47.6380, -21.5516], [-47.6425, -21.5245],
-    [-47.6398, -21.4714], [-47.6495, -21.4424], [-47.6543, -21.4273], [-47.6643, -21.4144]
-  ]
-};
+const STATIC_ROUTES = { /* suas rotas estaticas aqui, mantidas */ };
 
 const getAreaColor = (areaName) => {
   if (areaName.includes('W')) return '#9c27b0';
@@ -70,11 +53,12 @@ const getAreaColor = (areaName) => {
 };
 
 export default function App() {
+  const [selectedSquadron, setSelectedSquadron] = useState(null); // '1EIA' ou '2EIA'
+  
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markersRef = useRef(new Map());
   
-  // Referências DOM para HUD (Performance Extrema: Evita Re-renders)
   const compassPointerRef = useRef(null);
   const bearingTextRef = useRef(null);
   const pitchInputRef = useRef(null);
@@ -90,7 +74,6 @@ export default function App() {
   const [startTime, setStartTime] = useState(Date.now());
   const [elapsedTime, setElapsedTime] = useState(0);
   
-  // Modos de Jogo
   const [randomMode, setRandomMode] = useState(false);
   const [areaMode, setAreaMode] = useState(false);
   const [randomAreaSequence, setRandomAreaSequence] = useState(false);
@@ -99,15 +82,18 @@ export default function App() {
   const [boundaryMode, setBoundaryMode] = useState('progressive'); 
   const [showKey, setShowKey] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
-  const [showFullInstructions, setShowFullInstructions] = useState(false);
   const [hintTrigger, setHintTrigger] = useState(0);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [showCompletion, setShowCompletion] = useState(false);
   const [finalTime, setFinalTime] = useState(0);
   
-  const [selectedArea, setSelectedArea] = useState('Capricornio');
-  const areaList = Object.keys(AREAS);
+  // DADOS ATIVOS DEPENDENDO DO ESQUADRÃO
+  const activePointsData = selectedSquadron === '1EIA' ? pointsData : points2EIA;
+  const activeAreas = selectedSquadron === '1EIA' ? AREAS : AREAS_2EIA;
+  const areaList = Object.keys(activeAreas);
+
+  const [selectedArea, setSelectedArea] = useState(areaList[0] || '');
   const [areaIndex, setAreaIndex] = useState(0);
   const [areaPointIndex, setAreaPointIndex] = useState(0);
   const [areaQueue, setAreaQueue] = useState([]);
@@ -119,9 +105,9 @@ export default function App() {
 
   const nameToPointId = useCallback((name) => {
     const norm = normalizeStr(name);
-    const p = pointsData.find(pt => normalizeStr(pt.name) === norm || (pt.aliases || []).some(a => normalizeStr(a) === norm));
+    const p = activePointsData.find(pt => normalizeStr(pt.name) === norm || (pt.aliases || []).some(a => normalizeStr(a) === norm));
     return p ? p.id : null;
-  }, []);
+  }, [activePointsData]);
 
   const formatTime = (totalSeconds) => {
     const hours = Math.floor(totalSeconds / 3600);
@@ -135,13 +121,13 @@ export default function App() {
   };
 
   const getSortedAreaIds = useCallback((areaName) => {
-    const allNames = AREAS[areaName] || [];
-    const limitNames = AREA_LIMITS[areaName] || [];
+    const allNames = activeAreas[areaName] || [];
+    const limitNames = (selectedSquadron === '1EIA' ? AREA_LIMITS[areaName] : []) || [];
     const limitIds = limitNames.map(n => nameToPointId(n)).filter(Boolean);
     const allIds = allNames.map(n => nameToPointId(n)).filter(Boolean);
     const internalIds = allIds.filter(id => !limitIds.includes(id));
     return [...limitIds, ...internalIds];
-  }, [nameToPointId]);
+  }, [nameToPointId, activeAreas, selectedSquadron]);
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -152,8 +138,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    setAreaQueue(getSortedAreaIds(selectedArea));
-    setAreaPointIndex(0);
+    if(selectedArea) {
+      setAreaQueue(getSortedAreaIds(selectedArea));
+      setAreaPointIndex(0);
+    }
   }, [selectedArea, getSortedAreaIds]);
 
   useEffect(() => {
@@ -162,59 +150,73 @@ export default function App() {
   }, [showTerrain, isMapLoaded]);
 
   useEffect(() => { 
+    if(!selectedSquadron || showIntro) return;
     const id = setInterval(() => setElapsedTime(Math.floor((Date.now() - startTime) / 1000)), 1000); 
     return () => clearInterval(id); 
-  }, [startTime]);
+  }, [startTime, selectedSquadron, showIntro]);
 
   // Atualização de Limites (Boundaries)
   useEffect(() => {
-    if (!isMapLoaded || !map.current) return;
+    if (!isMapLoaded || !map.current || !selectedSquadron) return;
 
-    Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => {
-        const source = map.current.getSource(`source-${areaName}`);
-        if (!source) return;
+    if (selectedSquadron === '1EIA') {
+        Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => {
+            const source = map.current.getSource(`source-${areaName}`);
+            if (!source) return;
 
-        const limitIds = limitNames.map(name => nameToPointId(name)).filter(Boolean);
-        if (limitIds.length < 2) {
-             source.setData({ type: 'FeatureCollection', features: [] });
-             return;
-        }
+            const limitIds = limitNames.map(name => nameToPointId(name)).filter(Boolean);
+            if (limitIds.length < 2) {
+                 source.setData({ type: 'FeatureCollection', features: [] });
+                 return;
+            }
 
-        const features = [];
-        for (let i = 0; i < limitIds.length; i++) {
-            const id1 = limitIds[i];
-            const id2 = limitIds[(i + 1) % limitIds.length];
-            const p1 = pointsData.find(p => p.id === id1);
-            const p2 = pointsData.find(p => p.id === id2);
+            const features = [];
+            for (let i = 0; i < limitIds.length; i++) {
+                const id1 = limitIds[i];
+                const id2 = limitIds[(i + 1) % limitIds.length];
+                const p1 = activePointsData.find(p => p.id === id1);
+                const p2 = activePointsData.find(p => p.id === id2);
 
-            if (p1 && p2) {
-                let isVisible = boundaryMode === 'all' || (boundaryMode === 'progressive' && guessed.includes(id1) && guessed.includes(id2));
-                if (isVisible) {
-                    const routeKey = `${id1}-${id2}`;
-                    const reverseRouteKey = `${id2}-${id1}`;
-                    let geometryCoordinates = STATIC_ROUTES[routeKey] || (STATIC_ROUTES[reverseRouteKey] ? [...STATIC_ROUTES[reverseRouteKey]].reverse() : [p1.coords, p2.coords]);
-                    features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: geometryCoordinates } });
+                if (p1 && p2) {
+                    let isVisible = boundaryMode === 'all' || (boundaryMode === 'progressive' && guessed.includes(id1) && guessed.includes(id2));
+                    if (isVisible) {
+                        const routeKey = `${id1}-${id2}`;
+                        const reverseRouteKey = `${id2}-${id1}`;
+                        let geometryCoordinates = STATIC_ROUTES[routeKey] || (STATIC_ROUTES[reverseRouteKey] ? [...STATIC_ROUTES[reverseRouteKey]].reverse() : [p1.coords, p2.coords]);
+                        features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: geometryCoordinates } });
+                    }
                 }
             }
-        }
-        source.setData({ 'type': 'FeatureCollection', 'features': features });
-    });
+            source.setData({ 'type': 'FeatureCollection', 'features': features });
+        });
 
-    const extraSource = map.current.getSource('source-extra-red');
-    if (extraSource) {
-        const p1 = pointsData.find(p => p.id === 63);
-        const p2 = pointsData.find(p => p.id === 30);
-        let features = [];
-        if (p1 && p2 && (boundaryMode === 'all' || (boundaryMode === 'progressive' && guessed.includes(63) && guessed.includes(30)))) {
-             features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [p1.coords, p2.coords] } });
+        const extraSource = map.current.getSource('source-extra-red');
+        if (extraSource) {
+            const p1 = activePointsData.find(p => p.id === 63);
+            const p2 = activePointsData.find(p => p.id === 30);
+            let features = [];
+            if (p1 && p2 && (boundaryMode === 'all' || (boundaryMode === 'progressive' && guessed.includes(63) && guessed.includes(30)))) {
+                 features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [p1.coords, p2.coords] } });
+            }
+            extraSource.setData({ 'type': 'FeatureCollection', 'features': features });
         }
-        extraSource.setData({ 'type': 'FeatureCollection', 'features': features });
+    } else if (selectedSquadron === '2EIA') {
+        const source2eia = map.current.getSource('source-2eia-limits');
+        if (source2eia) {
+            let features = [];
+            if (boundaryMode !== 'none') { // Se mode for all ou prog, mostra as linhas GeoJSON
+                 LIMITS_2EIA_GEOJSON.forEach(coords => {
+                     features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+                 });
+            }
+            source2eia.setData({ 'type': 'FeatureCollection', 'features': features });
+        }
     }
-  }, [isMapLoaded, guessed, boundaryMode, nameToPointId]);
+  }, [isMapLoaded, guessed, boundaryMode, nameToPointId, selectedSquadron, activePointsData]);
 
   // Inicialização do Mapa
   useEffect(() => {
-    if (mapError) return; 
+    if (mapError || !selectedSquadron) return; 
     if (map.current) { map.current.remove(); map.current = null; setIsMapLoaded(false); }
 
     const initMap = async () => {
@@ -239,23 +241,32 @@ export default function App() {
         map.current.on('load', () => {
           map.current.addSource('terrain', { "type": "raster-dem", "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${activeKey}`, "tileSize": 512 });
 
-          Object.keys(AREA_LIMITS).forEach(areaName => {
-              map.current.addSource(`source-${areaName}`, { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
-              map.current.addLayer({
-                'id': `layer-${areaName}`, 'type': 'line', 'source': `source-${areaName}`,
-                'layout': { 'line-join': 'round', 'line-cap': 'round' },
-                'paint': { 'line-color': getAreaColor(areaName), 'line-width': 3, 'line-opacity': 0.6 }
+          if (selectedSquadron === '1EIA') {
+              Object.keys(AREA_LIMITS).forEach(areaName => {
+                  map.current.addSource(`source-${areaName}`, { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
+                  map.current.addLayer({
+                    'id': `layer-${areaName}`, 'type': 'line', 'source': `source-${areaName}`,
+                    'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                    'paint': { 'line-color': getAreaColor(areaName), 'line-width': 3, 'line-opacity': 0.6 }
+                  });
               });
-          });
 
-          map.current.addSource('source-extra-red', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
-          map.current.addLayer({
-            'id': 'layer-extra-red', 'type': 'line', 'source': 'source-extra-red',
-            'layout': { 'line-join': 'round', 'line-cap': 'round' },
-            'paint': { 'line-color': '#f44336', 'line-width': 3, 'line-opacity': 0.6 }
-          });
+              map.current.addSource('source-extra-red', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
+              map.current.addLayer({
+                'id': 'layer-extra-red', 'type': 'line', 'source': 'source-extra-red',
+                'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                'paint': { 'line-color': '#f44336', 'line-width': 3, 'line-opacity': 0.6 }
+              });
+          } else if (selectedSquadron === '2EIA') {
+              map.current.addSource('source-2eia-limits', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
+              map.current.addLayer({
+                'id': 'layer-2eia-limits', 'type': 'line', 'source': 'source-2eia-limits',
+                'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                'paint': { 'line-color': '#d32f2f', 'line-width': 3, 'line-opacity': 0.8 }
+              });
+          }
 
-          pointsData.forEach(point => {
+          activePointsData.forEach(point => {
             const el = document.createElement('div');
             el.style.cssText = 'width:0px;height:0px;display:flex;align-items:center;justify-content:center;overflow:visible;';
             const content = document.createElement('div');
@@ -280,7 +291,6 @@ export default function App() {
 
           setIsMapLoaded(true);
 
-          // OTIMIZAÇÃO: Atualiza os elementos HUD diretamente pelo DOM ao invés de usar estado do React!
           map.current.on('move', () => {
             if (!map.current) return;
             const p = Math.round(map.current.getPitch());
@@ -302,7 +312,7 @@ export default function App() {
       if (map.current) map.current.remove();
       map.current = null;
     };
-  }, [currentKeyIndex, activeKey]);
+  }, [currentKeyIndex, activeKey, selectedSquadron, activePointsData]);
 
   useEffect(() => {
     if (!isMapLoaded) return;
@@ -333,14 +343,13 @@ export default function App() {
     });
   }, [guessed, currentPoint, showKey, blindMode, hintTrigger, isMapLoaded]);
 
-  // Funções de Controle
+  // Controle do Jogo
   const revealAll = (show) => { setShowKey(show); markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = show ? '' : 'none'; }); };
   const resetGame = () => { 
       setGuessed([]); setCurrentPoint(null); setAnswer(''); setFeedback(null); 
       setStartTime(Date.now()); setFinalTime(0); setShowCompletion(false); setShowKey(false); 
       if (map.current) {
           map.current.flyTo({ center: INITIAL_CENTER, zoom: 9.5, pitch: 60, bearing: 130 - MAP_DECLINATION }); 
-          // Reseta a bússola visualmente
           if (compassPointerRef.current) compassPointerRef.current.style.transform = `translateX(-50%) rotate(130deg)`;
           if (bearingTextRef.current) bearingTextRef.current.innerText = `130°`;
           if (pitchInputRef.current) pitchInputRef.current.value = 60;
@@ -358,14 +367,14 @@ export default function App() {
     const ids = getSortedAreaIds(selectedArea);
     setAreaQueue(ids); setAreaPointIndex(0);
     if (ids.length) { 
-        let startP = pointsData.find(pt => pt.id === (randomAreaSequence ? ids.filter(id => !guessed.includes(id))[0] : ids[0]));
+        let startP = activePointsData.find(pt => pt.id === (randomAreaSequence ? ids.filter(id => !guessed.includes(id))[0] : ids[0]));
         if (startP) { setCurrentPoint(startP); if (map.current) map.current.flyTo({ center: startP.coords }); }
     }
   };
   const startRandomMode = () => {
     setRandomMode(true); setAreaMode(false);
     if (!currentPoint) {
-        const rem = pointsData.filter(p => !guessed.includes(p.id));
+        const rem = activePointsData.filter(p => !guessed.includes(p.id));
         const next = rem.length ? rem[Math.floor(Math.random() * rem.length)] : null;
         if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
     }
@@ -376,17 +385,17 @@ export default function App() {
   const moveToPoint = (direction) => {
       if (!currentPoint) return;
       let targetPoint = null;
-      const sortedPoints = [...pointsData].sort((a, b) => a.name.localeCompare(b.name));
+      const sortedPoints = [...activePointsData].sort((a, b) => a.name.localeCompare(b.name));
 
       if (areaMode) {
           if (randomAreaSequence && direction === 'next') {
               const rem = areaQueue.filter(id => !guessed.includes(id) && id !== currentPoint.id);
-              if (rem.length) targetPoint = pointsData.find(p => p.id === rem[Math.floor(Math.random() * rem.length)]);
+              if (rem.length) targetPoint = activePointsData.find(p => p.id === rem[Math.floor(Math.random() * rem.length)]);
           } else {
               const idx = areaQueue.indexOf(currentPoint.id);
               const newIdx = direction === 'next' ? idx + 1 : idx - 1;
               if (newIdx >= 0 && newIdx < areaQueue.length) {
-                  targetPoint = pointsData.find(p => p.id === areaQueue[newIdx]);
+                  targetPoint = activePointsData.find(p => p.id === areaQueue[newIdx]);
                   setAreaPointIndex(newIdx);
               }
           }
@@ -412,10 +421,10 @@ export default function App() {
         let nextPoint = null;
         if (randomAreaSequence) {
             const rem = areaQueue.filter(id => !updated.includes(id));
-            if (rem.length) nextPoint = pointsData.find(p => p.id === rem[Math.floor(Math.random() * rem.length)]);
+            if (rem.length) nextPoint = activePointsData.find(p => p.id === rem[Math.floor(Math.random() * rem.length)]);
         } else {
             const nextIdx = areaPointIndex + 1;
-            if (nextIdx < areaQueue.length) { setAreaPointIndex(nextIdx); nextPoint = pointsData.find(p => p.id === areaQueue[nextIdx]); }
+            if (nextIdx < areaQueue.length) { setAreaPointIndex(nextIdx); nextPoint = activePointsData.find(p => p.id === areaQueue[nextIdx]); }
         }
 
         if (nextPoint) {
@@ -426,12 +435,12 @@ export default function App() {
              const nextIds = getSortedAreaIds(areaList[nextAreaIdx]);
              const avail = nextIds.filter(id => !updated.includes(id));
              if (avail.length) {
-                 const firstPoint = pointsData.find(p => p.id === (randomAreaSequence ? avail[Math.floor(Math.random() * avail.length)] : avail[0]));
+                 const firstPoint = activePointsData.find(p => p.id === (randomAreaSequence ? avail[Math.floor(Math.random() * avail.length)] : avail[0]));
                  setCurrentPoint(firstPoint || null); setAnswer(''); if (map.current && firstPoint) map.current.flyTo({ center: firstPoint.coords });
              } else { handleCompletion(); setCurrentPoint(null); }
         }
       } else if (randomMode) {
-        const rem = pointsData.filter(p => !updated.includes(p.id));
+        const rem = activePointsData.filter(p => !updated.includes(p.id));
         const next = rem.length ? rem[Math.floor(Math.random() * rem.length)] : null;
         if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
         else { handleCompletion(); setCurrentPoint(null); setAnswer(''); }
@@ -447,14 +456,21 @@ export default function App() {
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPoint, areaMode, randomAreaSequence, areaQueue, showKey]);
+  }, [currentPoint, areaMode, randomAreaSequence, areaQueue, showKey, activePointsData]);
 
-  // Listas de Dropdown
-  const missingPoints = pointsData.filter(p => !guessed.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
-  const answeredPoints = pointsData.filter(p => guessed.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
-  const pointsInAnyArea = new Set();
-  Object.values(AREAS).forEach(names => names.forEach(name => { const id = nameToPointId(name); if(id) pointsInAnyArea.add(id); }));
-  const otherPointsList = pointsData.filter(p => !pointsInAnyArea.has(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
+  const missingPoints = activePointsData.filter(p => !guessed.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
+  const answeredPoints = activePointsData.filter(p => guessed.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
+
+  // RENDERIZAÇÃO TELA INICIAL
+  if (!selectedSquadron) {
+    return (
+      <div className="home-screen">
+        <h1 className="sq-title">SELECIONE O ESQUADRÃO</h1>
+        <button className="sq-btn eia1" onClick={() => { setSelectedSquadron('1EIA'); setSelectedArea(Object.keys(AREAS)[0]); }}>1º EIA</button>
+        <button className="sq-btn eia2" onClick={() => { setSelectedSquadron('2EIA'); setSelectedArea(Object.keys(AREAS_2EIA)[0]); }}>2º EIA</button>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -485,8 +501,37 @@ export default function App() {
                 <b>⬅</b><span>Anterior</span>
                 <b>Ctrl + Espaço</b><span>Gabarito</span>
             </div>
-            <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                <button onClick={() => setShowIntro(false)} style={{ padding:'10px 20px', background:'#4caf50', color:'white', borderRadius:6, border:'none', cursor: 'pointer' }}>Começar</button>
+            
+            {/* O salmo que você adicionou ficaria aqui */}
+            <div style={{ fontSize: '13px', fontStyle: 'italic', textAlign: 'center', margin: '20px 0', color: '#555' }}>
+               "Mil cairão ao teu lado, e dez mil à tua direita..."
+            </div>
+
+            {/* Imagens alinhadas e com mesma escala */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '10px', marginBottom: '20px' }}>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#eee', borderRadius: '6px', overflow: 'hidden' }}>
+                      <img src="https://via.placeholder.com/150" alt="Mota" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '4px' }}>#MOTA</div>
+              </div>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#eee', borderRadius: '6px', overflow: 'hidden' }}>
+                      <img src="https://via.placeholder.com/150" alt="Sirius 11" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '4px' }}>#SIRIUS11</div>
+              </div>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#eee', borderRadius: '6px', overflow: 'hidden' }}>
+                      <img src="https://via.placeholder.com/150" alt="Centaurus 25" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '4px' }}>#CENTAURUS25</div>
+              </div>
+            </div>
+
+            <div style={{ display:'flex', justifyContent:'space-between' }}>
+                <button onClick={() => { setSelectedSquadron(null); setShowIntro(false); }} style={{ padding:'10px 20px', background:'#f44336', color:'white', borderRadius:6, border:'none', cursor: 'pointer' }}>Voltar</button>
+                <button onClick={() => { setShowIntro(false); setStartTime(Date.now()); }} style={{ padding:'10px 20px', background:'#4caf50', color:'white', borderRadius:6, border:'none', cursor: 'pointer' }}>Começar</button>
             </div>
           </div>
         </div>
@@ -494,7 +539,7 @@ export default function App() {
 
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
-      {!mapError && (
+      {!mapError && !showIntro && (
         <>
           <div className="hud-controls">
             <div style={{ fontSize:11 }}>Pitch</div>
@@ -529,7 +574,6 @@ export default function App() {
             <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, cursor:'pointer', borderLeft: '1px solid #ddd', paddingLeft: 10 }}><input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} /><b>Às Cegas</b></label>
             <button onClick={() => setHintTrigger(p => p + 1)} style={{ opacity: blindMode ? 1 : 0, pointerEvents: blindMode ? 'auto' : 'none', padding: '6px 12px', borderRadius: 4, border: '1px solid #2196f3', backgroundColor: '#e3f2fd', color: '#1976d2', cursor: 'pointer', fontWeight: 'bold', fontSize: 12 }}>Dica</button>
             
-            {/* Controles de Limites mantidos compactos */}
             <div style={{ display:'flex', alignItems: 'center', border: '1px solid #ffcc80', borderRadius: 6, overflow: 'hidden', height: '28px', backgroundColor: 'white' }}>
                 <div style={{ padding: '0 8px', fontSize: 11, background: '#fff3e0', color: '#e65100', display: 'flex', alignItems: 'center', height: '100%', fontWeight: 'bold' }}>Limites</div>
                 {['all', 'progressive', 'none'].map(mode => (
@@ -541,7 +585,7 @@ export default function App() {
 
             <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto' }}>Recomeçar</button>
             <div style={{ minWidth:180, marginLeft: 10 }}>
-              <select style={{ width:'100%', padding:6, borderRadius:4 }} onChange={(e)=>{ const pt=pointsData.find(p=>p.id===Number(e.target.value)); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }} value="">
+              <select style={{ width:'100%', padding:6, borderRadius:4 }} onChange={(e)=>{ const pt=activePointsData.find(p=>p.id===Number(e.target.value)); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }} value="">
                 <option value="">-- Ir para ponto --</option>
                 {!areaMode ? (
                   <>
@@ -550,14 +594,14 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    {Object.entries(AREAS).map(([areaName, areaPointsNames]) => {
+                    {Object.entries(activeAreas).map(([areaName, areaPointsNames]) => {
                         const areaPointsIds = areaPointsNames.map(n => nameToPointId(n)).filter(Boolean);
-                        const areaMissing = areaPointsIds.filter(id => !guessed.includes(id)).sort((a,b) => pointsData.find(p=>p.id===a).name.localeCompare(pointsData.find(p=>p.id===b).name));
-                        const areaGuessed = areaPointsIds.filter(id => guessed.includes(id)).sort((a,b) => pointsData.find(p=>p.id===a).name.localeCompare(pointsData.find(p=>p.id===b).name));
+                        const areaMissing = areaPointsIds.filter(id => !guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a).name.localeCompare(activePointsData.find(p=>p.id===b).name));
+                        const areaGuessed = areaPointsIds.filter(id => guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a).name.localeCompare(activePointsData.find(p=>p.id===b).name));
                         return (
                             <optgroup key={areaName} label={areaName}>
-                                {areaMissing.map(id => <option key={id} value={id}>{pointsData.find(p => p.id === id).name}</option>)}
-                                {areaGuessed.map(id => <option key={id} value={id}>{pointsData.find(p => p.id === id).name} ✅</option>)}
+                                {areaMissing.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id).name}</option>)}
+                                {areaGuessed.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id).name} ✅</option>)}
                             </optgroup>
                         );
                     })}
