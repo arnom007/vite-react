@@ -71,4 +71,12 @@ export const pointsData = [
   { id: 69, name: 'Ponte na Aguaí sobre Rio Mogi', aliases: ['ponte na aguai sobre rio mogi'], coords: [-47.2992, -22.0072], info: 'Limite da área de Virgem Alta 📍 | Limite da área de Gêmeos Alta 📍' },
   { id: 70, name: 'Mogi-guaçu', aliases: ['mogi-guacu', 'mogi guacu'], coords: [-46.9383, -22.3656], info: 'Limite da área de Gêmeos Alta 📍' },
   { id: 71, name: 'Conchal', aliases: ['conchal'], coords: [-47.1694, -22.3378], info: 'Limite da área de Gêmeos Alta 📍' },
+  // ... seus pontos anteriores ...
+
+  // --- NOVAS ADIÇÕES ---
+  { id: 72, name: 'Santa Rosa', aliases: ['santa rosa'], coords: [-47.3705, -21.4435], info: 'Ponto da área de Taurus (obs: não usa)' },
+  { id: 73, name: 'Represa', aliases: ['represa'], coords: [-47.3664, -21.4509], info: 'Ponto da área de Taurus' },
+  { id: 74, name: 'Telhados Brancos', aliases: ['telhados brancos'], coords: [-47.3664, -21.4509], info: 'Ponto da área de Taurus' },
+  { id: 75, name: 'Santa Gertrudes', aliases: ['santa gertrudes'], coords: [-47.5327, -22.4573], info: 'Ponto da área de Capricornio' },
+  { id: 76, name: 'Ribeirão Bonito', aliases: ['ribeirao bonito'], coords: [-48.1766, -22.0686], info: 'Ponto da área de Aquárius W' },
 ];
