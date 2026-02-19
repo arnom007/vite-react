@@ -44,7 +44,9 @@ const AREA_LIMITS = {
   'Gêmeos Alta': ['Ponte na Aguaí sobre Rio Mogi', 'Casa Branca', 'São João da Boa Vista', 'Mogi-guaçu', 'Conchal']
 };
 
-const STATIC_ROUTES = { /* suas rotas estaticas aqui, mantidas */ };
+const STATIC_ROUTES = { /* Mantendo padrão original para não quebrar limites antigos */
+  '30-52': [[-47.4721, -21.8490], [-47.4824, -21.8350], [-47.4851, -21.8317], [-47.4863, -21.8300], [-47.4876, -21.8282], [-47.4882, -21.8274], [-47.4890, -21.8265], [-47.4897, -21.8257], [-47.4903, -21.8248], [-47.4910, -21.8239], [-47.4918, -21.8231], [-47.4924, -21.8225], [-47.4929, -21.8216], [-47.4933, -21.8211], [-47.4937, -21.8205], [-47.4946, -21.8196], [-47.4956, -21.8187], [-47.4965, -21.8178], [-47.4967, -21.8174], [-47.4970, -21.8168], [-47.4973, -21.8158], [-47.4976, -21.8138], [-47.5017, -21.8066], [-47.5071, -21.8001], [-47.5145, -21.7944], [-47.5705, -21.7509], [-47.5817, -21.7389], [-47.5882, -21.7228], [-47.5989, -21.6928], [-47.6043, -21.6777], [-47.6071, -21.6700], [-47.6084, -21.6622], [-47.6108, -21.6463], [-47.6136, -21.6308], [-47.6155, -21.6199], [-47.6163, -21.6133], [-47.6181, -21.6088], [-47.6284, -21.5785], [-47.6380, -21.5516], [-47.6425, -21.5245], [-47.6398, -21.4714], [-47.6495, -21.4424], [-47.6543, -21.4273], [-47.6643, -21.4144]]
+};
 
 const getAreaColor = (areaName) => {
   if (areaName.includes('W')) return '#9c27b0';
@@ -88,12 +90,12 @@ export default function App() {
   const [showCompletion, setShowCompletion] = useState(false);
   const [finalTime, setFinalTime] = useState(0);
   
-  // DADOS ATIVOS DEPENDENDO DO ESQUADRÃO
-  const activePointsData = selectedSquadron === '1EIA' ? pointsData : points2EIA;
-  const activeAreas = selectedSquadron === '1EIA' ? AREAS : AREAS_2EIA;
+  // Controle Seguro de Dados: Previne crash se o import do points2EIA.js falhar
+  const activePointsData = (selectedSquadron === '1EIA' ? pointsData : points2EIA) || [];
+  const activeAreas = (selectedSquadron === '1EIA' ? AREAS : AREAS_2EIA) || {};
   const areaList = Object.keys(activeAreas);
 
-  const [selectedArea, setSelectedArea] = useState(areaList[0] || '');
+  const [selectedArea, setSelectedArea] = useState('');
   const [areaIndex, setAreaIndex] = useState(0);
   const [areaPointIndex, setAreaPointIndex] = useState(0);
   const [areaQueue, setAreaQueue] = useState([]);
@@ -155,7 +157,7 @@ export default function App() {
     return () => clearInterval(id); 
   }, [startTime, selectedSquadron, showIntro]);
 
-  // Atualização de Limites (Boundaries)
+  // Atualização de Limites Geográficos
   useEffect(() => {
     if (!isMapLoaded || !map.current || !selectedSquadron) return;
 
@@ -163,25 +165,18 @@ export default function App() {
         Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => {
             const source = map.current.getSource(`source-${areaName}`);
             if (!source) return;
-
             const limitIds = limitNames.map(name => nameToPointId(name)).filter(Boolean);
-            if (limitIds.length < 2) {
-                 source.setData({ type: 'FeatureCollection', features: [] });
-                 return;
-            }
+            if (limitIds.length < 2) { source.setData({ type: 'FeatureCollection', features: [] }); return; }
 
             const features = [];
             for (let i = 0; i < limitIds.length; i++) {
-                const id1 = limitIds[i];
-                const id2 = limitIds[(i + 1) % limitIds.length];
-                const p1 = activePointsData.find(p => p.id === id1);
-                const p2 = activePointsData.find(p => p.id === id2);
+                const id1 = limitIds[i]; const id2 = limitIds[(i + 1) % limitIds.length];
+                const p1 = activePointsData.find(p => p.id === id1); const p2 = activePointsData.find(p => p.id === id2);
 
                 if (p1 && p2) {
                     let isVisible = boundaryMode === 'all' || (boundaryMode === 'progressive' && guessed.includes(id1) && guessed.includes(id2));
                     if (isVisible) {
-                        const routeKey = `${id1}-${id2}`;
-                        const reverseRouteKey = `${id2}-${id1}`;
+                        const routeKey = `${id1}-${id2}`; const reverseRouteKey = `${id2}-${id1}`;
                         let geometryCoordinates = STATIC_ROUTES[routeKey] || (STATIC_ROUTES[reverseRouteKey] ? [...STATIC_ROUTES[reverseRouteKey]].reverse() : [p1.coords, p2.coords]);
                         features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: geometryCoordinates } });
                     }
@@ -189,22 +184,11 @@ export default function App() {
             }
             source.setData({ 'type': 'FeatureCollection', 'features': features });
         });
-
-        const extraSource = map.current.getSource('source-extra-red');
-        if (extraSource) {
-            const p1 = activePointsData.find(p => p.id === 63);
-            const p2 = activePointsData.find(p => p.id === 30);
-            let features = [];
-            if (p1 && p2 && (boundaryMode === 'all' || (boundaryMode === 'progressive' && guessed.includes(63) && guessed.includes(30)))) {
-                 features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [p1.coords, p2.coords] } });
-            }
-            extraSource.setData({ 'type': 'FeatureCollection', 'features': features });
-        }
     } else if (selectedSquadron === '2EIA') {
         const source2eia = map.current.getSource('source-2eia-limits');
         if (source2eia) {
             let features = [];
-            if (boundaryMode !== 'none') { // Se mode for all ou prog, mostra as linhas GeoJSON
+            if (boundaryMode !== 'none') {
                  LIMITS_2EIA_GEOJSON.forEach(coords => {
                      features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
                  });
@@ -249,13 +233,6 @@ export default function App() {
                     'layout': { 'line-join': 'round', 'line-cap': 'round' },
                     'paint': { 'line-color': getAreaColor(areaName), 'line-width': 3, 'line-opacity': 0.6 }
                   });
-              });
-
-              map.current.addSource('source-extra-red', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
-              map.current.addLayer({
-                'id': 'layer-extra-red', 'type': 'line', 'source': 'source-extra-red',
-                'layout': { 'line-join': 'round', 'line-cap': 'round' },
-                'paint': { 'line-color': '#f44336', 'line-width': 3, 'line-opacity': 0.6 }
               });
           } else if (selectedSquadron === '2EIA') {
               map.current.addSource('source-2eia-limits', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
@@ -343,7 +320,7 @@ export default function App() {
     });
   }, [guessed, currentPoint, showKey, blindMode, hintTrigger, isMapLoaded]);
 
-  // Controle do Jogo
+  // Controles
   const revealAll = (show) => { setShowKey(show); markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = show ? '' : 'none'; }); };
   const resetGame = () => { 
       setGuessed([]); setCurrentPoint(null); setAnswer(''); setFeedback(null); 
@@ -461,7 +438,7 @@ export default function App() {
   const missingPoints = activePointsData.filter(p => !guessed.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
   const answeredPoints = activePointsData.filter(p => guessed.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
 
-  // RENDERIZAÇÃO TELA INICIAL
+  // TELA DE SELEÇÃO INICIAL
   if (!selectedSquadron) {
     return (
       <div className="home-screen">
@@ -491,10 +468,11 @@ export default function App() {
           </div>
       )}
 
+      {/* TELA DE INTRODUÇÃO E IMAGENS */}
       {showIntro && !mapError && (
         <div style={{ position: 'absolute', inset: 0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
           <div style={{ background:'white', padding:'20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
-            <h3 style={{ marginTop: 0 }}>Atalhos do Jogo:</h3>
+            <h3 style={{ marginTop: 0, textAlign: 'center' }}>Atalhos do Jogo:</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', alignItems: 'center', marginBottom: 20 }}>
                 <b>Enter</b><span>Confirmar</span>
                 <b>➜</b><span>Próximo</span>
@@ -502,41 +480,34 @@ export default function App() {
                 <b>Ctrl + Espaço</b><span>Gabarito</span>
             </div>
             
-            {/* O salmo que você adicionou ficaria aqui */}
-            <div style={{ fontSize: '13px', fontStyle: 'italic', textAlign: 'center', margin: '20px 0', color: '#555' }}>
+            <div style={{ fontSize: '14px', fontStyle: 'italic', textAlign: 'center', margin: '20px 0', color: '#555' }}>
                "Mil cairão ao teu lado, e dez mil à tua direita..."
             </div>
 
-            {/* Imagens alinhadas e com mesma escala */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '10px', marginBottom: '20px' }}>
-              <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#eee', borderRadius: '6px', overflow: 'hidden' }}>
-                      <img src="https://via.placeholder.com/150" alt="Mota" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '4px' }}>#MOTA</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '20px' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <img src="URL_FOTO_MOTA_AQUI" alt="Mota" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '6px' }}>#MOTA</span>
               </div>
-              <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#eee', borderRadius: '6px', overflow: 'hidden' }}>
-                      <img src="https://via.placeholder.com/150" alt="Sirius 11" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '4px' }}>#SIRIUS11</div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <img src="URL_FOTO_SIRIUS_AQUI" alt="Sirius 11" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '6px' }}>#SIRIUS11</span>
               </div>
-              <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#eee', borderRadius: '6px', overflow: 'hidden' }}>
-                      <img src="https://via.placeholder.com/150" alt="Centaurus 25" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '4px' }}>#CENTAURUS25</div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <img src="URL_FOTO_CENTAURUS_AQUI" alt="Centaurus 25" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '6px' }}>#CENTAURUS25</span>
               </div>
             </div>
 
             <div style={{ display:'flex', justifyContent:'space-between' }}>
-                <button onClick={() => { setSelectedSquadron(null); setShowIntro(false); }} style={{ padding:'10px 20px', background:'#f44336', color:'white', borderRadius:6, border:'none', cursor: 'pointer' }}>Voltar</button>
-                <button onClick={() => { setShowIntro(false); setStartTime(Date.now()); }} style={{ padding:'10px 20px', background:'#4caf50', color:'white', borderRadius:6, border:'none', cursor: 'pointer' }}>Começar</button>
+                <button onClick={() => { setSelectedSquadron(null); }} style={{ padding:'10px 20px', background:'#f44336', color:'white', borderRadius:6, border:'none', cursor: 'pointer' }}>Voltar</button>
+                <button onClick={() => { setShowIntro(false); setStartTime(Date.now()); }} style={{ padding:'10px 20px', background:'#4caf50', color:'white', borderRadius:6, border:'none', cursor: 'pointer', fontWeight: 'bold' }}>Começar</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* O MAPA É RENDERIZADO AQUI, MAS FICA ESCONDIDO ATRÁS DA INTRO */}
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
       {!mapError && !showIntro && (
@@ -577,43 +548,4 @@ export default function App() {
             <div style={{ display:'flex', alignItems: 'center', border: '1px solid #ffcc80', borderRadius: 6, overflow: 'hidden', height: '28px', backgroundColor: 'white' }}>
                 <div style={{ padding: '0 8px', fontSize: 11, background: '#fff3e0', color: '#e65100', display: 'flex', alignItems: 'center', height: '100%', fontWeight: 'bold' }}>Limites</div>
                 {['all', 'progressive', 'none'].map(mode => (
-                    <div key={mode} onClick={() => setBoundaryMode(mode)} style={{ padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center', backgroundColor: boundaryMode === mode ? '#ffe0b2' : 'white', fontWeight: boundaryMode === mode ? 'bold' : 'normal', color: '#e65100' }}>
-                        {mode === 'all' ? 'Todos' : mode === 'progressive' ? 'Progr.' : 'Off'}
-                    </div>
-                ))}
-            </div>
-
-            <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto' }}>Recomeçar</button>
-            <div style={{ minWidth:180, marginLeft: 10 }}>
-              <select style={{ width:'100%', padding:6, borderRadius:4 }} onChange={(e)=>{ const pt=activePointsData.find(p=>p.id===Number(e.target.value)); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }} value="">
-                <option value="">-- Ir para ponto --</option>
-                {!areaMode ? (
-                  <>
-                    {missingPoints.length > 0 && <optgroup label="Faltantes">{missingPoints.map(pt => <option key={pt.id} value={pt.id}>{pt.name}</option>)}</optgroup>}
-                    {answeredPoints.length > 0 && <optgroup label="Respondidos">{answeredPoints.map(pt => <option key={pt.id} value={pt.id}>{pt.name} ✅</option>)}</optgroup>}
-                  </>
-                ) : (
-                  <>
-                    {Object.entries(activeAreas).map(([areaName, areaPointsNames]) => {
-                        const areaPointsIds = areaPointsNames.map(n => nameToPointId(n)).filter(Boolean);
-                        const areaMissing = areaPointsIds.filter(id => !guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a).name.localeCompare(activePointsData.find(p=>p.id===b).name));
-                        const areaGuessed = areaPointsIds.filter(id => guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a).name.localeCompare(activePointsData.find(p=>p.id===b).name));
-                        return (
-                            <optgroup key={areaName} label={areaName}>
-                                {areaMissing.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id).name}</option>)}
-                                {areaGuessed.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id).name} ✅</option>)}
-                            </optgroup>
-                        );
-                    })}
-                  </>
-                )}
-              </select>
-            </div>
-            <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10 }}><input type="checkbox" checked={showKey} onChange={(e)=> revealAll(e.target.checked)} /> Gabarito</label>
-            <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10 }}><input type="checkbox" checked={showTerrain} onChange={(e)=> setShowTerrain(e.target.checked)} /> Relevo</label>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+                    <div key={mode} onClick={() => setBoundaryMode(mode)} style={{ padding: '0 8px', fontSize: 12, cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center',
