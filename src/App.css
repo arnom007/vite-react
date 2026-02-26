@@ -90,11 +90,11 @@
 .compass-pointer {
   position: absolute; 
   top: 4px; 
-  left: 50%; 
+  left: calc(50% - 1px); 
   width: 2px; 
-  height: 18px; 
+  height: 12px; 
   background: red; 
-  transform-origin: bottom center;
+  border-radius: 2px;
 }
 
 .quiz-panel {
@@ -194,4 +194,15 @@
 .sq-btn.eia2:hover {
   background-color: #d32f2f;
   color: white;
+}
+
+/* Modais Custom */
+.upload-btn { background: #673ab7; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; border: none; font-weight: bold; font-size: 12px; display: flex; align-items: center; gap: 4px; }
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100000; display: flex; justify-content: center; align-items: center; }
+.modal-content { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; }
+
+/* --- AJUSTE DE BRILHO DO MAPA --- */
+/* Aplica o filtro apenas no canvas do mapa, preservando as cores dos menus e botões */
+.maplibregl-canvas {
+  filter: brightness(1.25) contrast(1.05) saturate(1.1);
 }
