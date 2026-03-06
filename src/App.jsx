@@ -44,7 +44,7 @@ const AREA_LIMITS = {
   'Gêmeos Alta': ['Ponte na Aguaí sobre Rio Mogi', 'Casa Branca', 'São João da Boa Vista', 'Mogi-guaçu', 'Conchal']
 };
 
-const STATIC_ROUTES = { /* Mantendo padrão original para não quebrar limites antigos */
+const STATIC_ROUTES = { 
   '30-52': [[-47.4721, -21.8490], [-47.4824, -21.8350], [-47.4851, -21.8317], [-47.4863, -21.8300], [-47.4876, -21.8282], [-47.4882, -21.8274], [-47.4890, -21.8265], [-47.4897, -21.8257], [-47.4903, -21.8248], [-47.4910, -21.8239], [-47.4918, -21.8231], [-47.4924, -21.8225], [-47.4929, -21.8216], [-47.4933, -21.8211], [-47.4937, -21.8205], [-47.4946, -21.8196], [-47.4956, -21.8187], [-47.4965, -21.8178], [-47.4967, -21.8174], [-47.4970, -21.8168], [-47.4973, -21.8158], [-47.4976, -21.8138], [-47.5017, -21.8066], [-47.5071, -21.8001], [-47.5145, -21.7944], [-47.5705, -21.7509], [-47.5817, -21.7389], [-47.5882, -21.7228], [-47.5989, -21.6928], [-47.6043, -21.6777], [-47.6071, -21.6700], [-47.6084, -21.6622], [-47.6108, -21.6463], [-47.6136, -21.6308], [-47.6155, -21.6199], [-47.6163, -21.6133], [-47.6181, -21.6088], [-47.6284, -21.5785], [-47.6380, -21.5516], [-47.6425, -21.5245], [-47.6398, -21.4714], [-47.6495, -21.4424], [-47.6543, -21.4273], [-47.6643, -21.4144]]
 };
 
@@ -55,7 +55,7 @@ const getAreaColor = (areaName) => {
 };
 
 export default function App() {
-  const [selectedSquadron, setSelectedSquadron] = useState(null); // '1EIA' ou '2EIA'
+  const [selectedSquadron, setSelectedSquadron] = useState(null);
   
   const mapContainer = useRef(null);
   const map = useRef(null);
@@ -90,7 +90,6 @@ export default function App() {
   const [showCompletion, setShowCompletion] = useState(false);
   const [finalTime, setFinalTime] = useState(0);
   
-  // Controle Seguro de Dados: Previne crash se o import do points2EIA.js falhar
   const activePointsData = (selectedSquadron === '1EIA' ? pointsData : points2EIA) || [];
   const activeAreas = (selectedSquadron === '1EIA' ? AREAS : AREAS_2EIA) || {};
   const areaList = Object.keys(activeAreas);
@@ -125,11 +124,26 @@ export default function App() {
   const getSortedAreaIds = useCallback((areaName) => {
     const allNames = activeAreas[areaName] || [];
     const limitNames = (selectedSquadron === '1EIA' ? AREA_LIMITS[areaName] : []) || [];
+    
     const limitIds = limitNames.map(n => nameToPointId(n)).filter(Boolean);
     const allIds = allNames.map(n => nameToPointId(n)).filter(Boolean);
-    const internalIds = allIds.filter(id => !limitIds.includes(id));
-    return [...limitIds, ...internalIds];
-  }, [nameToPointId, activeAreas, selectedSquadron]);
+    
+    const internalIds = [];
+    const referenceIds = [];
+    
+    allIds.forEach(id => {
+      if (!limitIds.includes(id)) {
+        const pointObj = activePointsData.find(p => p.id === id);
+        if (pointObj && pointObj.type === 'reference') {
+          referenceIds.push(id);
+        } else {
+          internalIds.push(id);
+        }
+      }
+    });
+
+    return [...limitIds, ...internalIds, ...referenceIds];
+  }, [nameToPointId, activeAreas, selectedSquadron, activePointsData]);
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -184,6 +198,17 @@ export default function App() {
             }
             source.setData({ 'type': 'FeatureCollection', 'features': features });
         });
+
+        const extraSource = map.current.getSource('source-extra-red');
+        if (extraSource) {
+            const p1 = activePointsData.find(p => p.id === 63); 
+            const p2 = activePointsData.find(p => p.id === 30); 
+            let features = [];
+            if (p1 && p2 && (boundaryMode === 'all' || (boundaryMode === 'progressive' && guessed.includes(63) && guessed.includes(30)))) {
+                 features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [p1.coords, p2.coords] } });
+            }
+            extraSource.setData({ 'type': 'FeatureCollection', 'features': features });
+        }
     } else if (selectedSquadron === '2EIA') {
         const source2eia = map.current.getSource('source-2eia-limits');
         if (source2eia) {
@@ -234,6 +259,12 @@ export default function App() {
                     'paint': { 'line-color': getAreaColor(areaName), 'line-width': 3, 'line-opacity': 0.6 }
                   });
               });
+              map.current.addSource('source-extra-red', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
+              map.current.addLayer({
+                'id': 'layer-extra-red', 'type': 'line', 'source': 'source-extra-red',
+                'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                'paint': { 'line-color': '#f44336', 'line-width': 3, 'line-opacity': 0.6 }
+              });
           } else if (selectedSquadron === '2EIA') {
               map.current.addSource('source-2eia-limits', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
               map.current.addLayer({
@@ -245,14 +276,25 @@ export default function App() {
 
           activePointsData.forEach(point => {
             const el = document.createElement('div');
+            el.className = 'marker-root';
             el.style.cssText = 'width:0px;height:0px;display:flex;align-items:center;justify-content:center;overflow:visible;';
             const content = document.createElement('div');
+            content.className = 'marker-content';
             content.style.cssText = 'width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:width 0.3s, height 0.3s;';
             const hint = document.createElement('div');
+            hint.className = 'hint-pulse';
             hint.style.cssText = 'position:absolute;width:100%;height:100%;background-color:rgba(255,255,255,0.8);border-radius:50%;transform:scale(0.5);opacity:0;pointer-events:none;';
             const dot = document.createElement('div');
+            dot.className = 'marker-dot';
             dot.style.cssText = 'width:12px;height:12px;background-color:red;border-radius:50%;box-shadow:0 0 5px rgba(0,0,0,0.6);transition:opacity 0.2s ease;';
             
+            if (point.type === 'reference') {
+                dot.style.backgroundColor = '#9c27b0'; 
+                dot.style.border = '2px solid white';
+                dot.style.width = '14px';
+                dot.style.height = '14px';
+            }
+
             content.appendChild(hint); content.appendChild(dot); el.appendChild(content);
 
             content.addEventListener('click', (e) => { e.stopPropagation(); setCurrentPoint(point); setAnswer(''); setFeedback(null); });
@@ -268,7 +310,11 @@ export default function App() {
 
           setIsMapLoaded(true);
 
+          let lastUpdate = 0;
           map.current.on('move', () => {
+            const now = Date.now();
+            if (now - lastUpdate < 50) return; 
+            lastUpdate = now;
             if (!map.current) return;
             const p = Math.round(map.current.getPitch());
             const b = Math.round(((map.current.getBearing() + MAP_DECLINATION) + 360) % 360);
@@ -296,13 +342,19 @@ export default function App() {
     markersRef.current.forEach((rec, id) => {
       const { content, dot, hint, labelEl, labelMarker, point } = rec;
       if (!dot || !content) return;
+      
       const isGuessed = guessed.includes(id);
       const isCurrent = currentPoint && currentPoint.id === id;
 
-      dot.style.backgroundColor = isGuessed ? 'green' : (isCurrent ? 'yellow' : (showKey ? 'orange' : 'red'));
+      if (point.type === 'reference') {
+          dot.style.backgroundColor = isCurrent ? 'yellow' : '#9c27b0';
+      } else {
+          dot.style.backgroundColor = isGuessed ? 'green' : (isCurrent ? 'yellow' : (showKey ? 'orange' : 'red'));
+      }
+      
       content.style.width = blindMode ? '80px' : '40px';
       content.style.height = blindMode ? '80px' : '40px';
-      dot.style.opacity = (blindMode && !isGuessed) ? '0' : '1';
+      dot.style.opacity = (blindMode && !isGuessed && point.type !== 'reference') ? '0' : '1';
 
       if (hint) {
           if (isCurrent && hintTrigger > 0) {
@@ -311,11 +363,13 @@ export default function App() {
       }
 
       if (labelEl) {
-        if (isGuessed || showKey) {
-          labelEl.style.display = '';
-          labelEl.style.fontSize = `${Math.max(10, Math.round((map.current?.getZoom() || 10) * 1.2))}px`;
-          labelMarker.setLngLat(point.coords);
-        } else { labelEl.style.display = 'none'; }
+        if (isGuessed || showKey || isCurrent) {
+            labelEl.style.display = '';
+            labelEl.style.fontSize = `${Math.max(10, Math.round((map.current?.getZoom() || 10) * 1.2))}px`;
+            labelMarker.setLngLat(point.coords);
+        } else {
+             labelEl.style.display = 'none'; 
+        }
       }
     });
   }, [guessed, currentPoint, showKey, blindMode, hintTrigger, isMapLoaded]);
@@ -351,7 +405,7 @@ export default function App() {
   const startRandomMode = () => {
     setRandomMode(true); setAreaMode(false);
     if (!currentPoint) {
-        const rem = activePointsData.filter(p => !guessed.includes(p.id));
+        const rem = activePointsData.filter(p => !guessed.includes(p.id) && p.type !== 'reference');
         const next = rem.length ? rem[Math.floor(Math.random() * rem.length)] : null;
         if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
     }
@@ -385,9 +439,7 @@ export default function App() {
       if (targetPoint) { setCurrentPoint(targetPoint); setAnswer(''); setFeedback(null); if (map.current) map.current.flyTo({ center: targetPoint.coords }); }
   };
 
-  const checkAnswer = () => {
-    const normalized = normalizeStr(answer);
-    if (currentPoint && currentPoint.aliases.map(a => normalizeStr(a)).includes(normalized)) {
+  const processCorrectAnswer = () => {
       setFeedback(null);
       const updated = Array.from(new Set([...guessed, currentPoint.id]));
       setGuessed(updated);
@@ -398,7 +450,18 @@ export default function App() {
         let nextPoint = null;
         if (randomAreaSequence) {
             const rem = areaQueue.filter(id => !updated.includes(id));
-            if (rem.length) nextPoint = activePointsData.find(p => p.id === rem[Math.floor(Math.random() * rem.length)]);
+            if (rem.length) {
+                const normalRem = rem.filter(id => {
+                    const pt = activePointsData.find(p => p.id === id);
+                    return pt && pt.type !== 'reference';
+                });
+                
+                if (normalRem.length > 0) {
+                     nextPoint = activePointsData.find(p => p.id === normalRem[Math.floor(Math.random() * normalRem.length)]);
+                } else {
+                     nextPoint = activePointsData.find(p => p.id === rem[0]);
+                }
+            }
         } else {
             const nextIdx = areaPointIndex + 1;
             if (nextIdx < areaQueue.length) { setAreaPointIndex(nextIdx); nextPoint = activePointsData.find(p => p.id === areaQueue[nextIdx]); }
@@ -417,11 +480,22 @@ export default function App() {
              } else { handleCompletion(); setCurrentPoint(null); }
         }
       } else if (randomMode) {
-        const rem = activePointsData.filter(p => !updated.includes(p.id));
+        const rem = activePointsData.filter(p => !updated.includes(p.id) && p.type !== 'reference'); 
         const next = rem.length ? rem[Math.floor(Math.random() * rem.length)] : null;
         if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
         else { handleCompletion(); setCurrentPoint(null); setAnswer(''); }
       } else { setCurrentPoint(null); setAnswer(''); }
+  };
+
+  const checkAnswer = () => {
+    if (currentPoint && currentPoint.type === 'reference') {
+       processCorrectAnswer();
+       return;
+    }
+
+    const normalized = normalizeStr(answer);
+    if (currentPoint && currentPoint.aliases.map(a => normalizeStr(a)).includes(normalized)) {
+      processCorrectAnswer();
     } else { setFeedback('error'); }
   };
 
@@ -435,10 +509,9 @@ export default function App() {
       return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPoint, areaMode, randomAreaSequence, areaQueue, showKey, activePointsData]);
 
-  const missingPoints = activePointsData.filter(p => !guessed.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
-  const answeredPoints = activePointsData.filter(p => guessed.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
+  const missingPoints = activePointsData.filter(p => !guessed.includes(p.id) && p.type !== 'reference').sort((a,b)=>a.name.localeCompare(b.name));
+  const answeredPoints = activePointsData.filter(p => guessed.includes(p.id) && p.type !== 'reference').sort((a,b)=>a.name.localeCompare(b.name));
 
-  // TELA DE SELEÇÃO INICIAL
   if (!selectedSquadron) {
     return (
       <div className="home-screen">
@@ -468,7 +541,6 @@ export default function App() {
           </div>
       )}
 
-      {/* TELA DE INTRODUÇÃO E IMAGENS */}
       {showIntro && !mapError && (
         <div style={{ position: 'absolute', inset: 0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
           <div style={{ background:'white', padding:'30px 20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
@@ -489,26 +561,26 @@ export default function App() {
                 <button onClick={() => { setShowIntro(false); setStartTime(Date.now()); }} style={{ padding:'10px 20px', background:'#4caf50', color:'white', borderRadius:6, border:'none', cursor: 'pointer', fontWeight: 'bold' }}>Começar</button>
             </div>
 
-            {/* Imagens Menores no Rodapé */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '25px', marginTop: '40px', opacity: 0.8 }}>
-              <div style={{ width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img src="athos.png" alt="23/021" style={{ width: '100%', height: '60px', objectFit: 'contain', filter: 'drop-shadow(0px 2px 2px rgba(0,0,0,0.2))' }} />
-                  <span style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '6px', color: '#666' }}>#MTA</span>
+            {/* Imagens Menores no Rodapé (CORRIGIDO) */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '40px', opacity: 0.35 }}>
+              <div style={{ width: '55px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <img src="athos.png" alt="23/021" style={{ maxWidth: '100%', height: '35px', width: 'auto', objectFit: 'contain' }} />
+                  <span style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '6px', color: '#999', letterSpacing: '0.5px' }}>#MTA</span>
               </div>
-              <div style={{ width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img src="/sirius.png" alt="Sirius 11" style={{ width: '100%', height: '60px', objectFit: 'contain', filter: 'drop-shadow(0px 2px 2px rgba(0,0,0,0.2))' }} />
-                  <span style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '6px', color: '#666' }}>#SIRIUS11</span>
+              <div style={{ width: '55px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <img src="sirius.png" alt="Sirius 11" style={{ maxWidth: '100%', height: '35px', width: 'auto', objectFit: 'contain' }} />
+                  <span style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '6px', color: '#999', letterSpacing: '0.5px' }}>#SIRIUS11</span>
               </div>
-              <div style={{ width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img src="/centaurus.png" alt="Centaurus 25" style={{ width: '100%', height: '60px', objectFit: 'contain', filter: 'drop-shadow(0px 2px 2px rgba(0,0,0,0.2))' }} />
-                  <span style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '6px', color: '#666' }}>#CENTAURUS25</span>
+              <div style={{ width: '55px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <img src="centaurus.png" alt="Centaurus 25" style={{ maxWidth: '100%', height: '35px', width: 'auto', objectFit: 'contain' }} />
+                  <span style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '6px', color: '#999', letterSpacing: '0.5px' }}>#CENTAURUS</span>
               </div>
             </div>
+
           </div>
         </div>
       )}
 
-      {/* O MAPA É RENDERIZADO AQUI, MAS FICA ESCONDIDO ATRÁS DA INTRO */}
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
       {!mapError && !showIntro && (
@@ -523,40 +595,31 @@ export default function App() {
           <div className="compass-container" style={{ minWidth: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' }}>
             <div className="compass-circle" style={{ width: 60, height: 60, border: 'none', background: 'rgba(255,255,255,0.9)', borderRadius: '50%', position: 'relative', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}>
               
-              {/* Fundo Fixo (Pontos Cardeais e Tracinhos) */}
               <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-                {/* Tracinhos Cardeais */}
                 <line x1="50" y1="2" x2="50" y2="10" stroke="#333" strokeWidth="2" />
                 <line x1="50" y1="90" x2="50" y2="98" stroke="#333" strokeWidth="2" />
                 <line x1="2" y1="50" x2="10" y2="50" stroke="#333" strokeWidth="2" />
                 <line x1="90" y1="50" x2="98" y2="50" stroke="#333" strokeWidth="2" />
                 
-                {/* Tracinhos Ordinais (45º) */}
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(45 50 50)" />
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(135 50 50)" />
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(225 50 50)" />
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(315 50 50)" />
                 
-                {/* Tracinhos Intermediários (22.5º) */}
                 {[22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5].map(deg => (
                   <line key={deg} x1="50" y1="2" x2="50" y2="6" stroke="#aaa" strokeWidth="1" transform={`rotate(${deg} 50 50)`} />
                 ))}
                 
-                {/* Textos Cardeais */}
                 <text x="50" y="24" fontSize="16" textAnchor="middle" fill="#d32f2f" fontWeight="bold" fontFamily="Arial">N</text>
                 <text x="50" y="85" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">S</text>
                 <text x="82" y="55" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">E</text>
                 <text x="18" y="55" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">W</text>
               </svg>
               
-              {/* Agulha Rotativa */}
               <div ref={compassWrapperRef} style={{ position: 'absolute', inset: 0, zIndex: 2, transform: 'rotate(130deg)', transition: 'transform 0.1s ease-out' }}>
                 <svg viewBox="0 0 100 100" width="100%" height="100%">
-                  {/* Seta Norte */}
                   <polygon points="45,50 55,50 50,15" fill="#f44336" stroke="#b71c1c" strokeWidth="1" />
-                  {/* Seta Sul */}
                   <polygon points="45,50 55,50 50,85" fill="#e0e0e0" stroke="#9e9e9e" strokeWidth="1" />
-                  {/* Pino Central */}
                   <circle cx="50" cy="50" r="5" fill="#333" />
                   <circle cx="50" cy="50" r="2" fill="white" />
                 </svg>
@@ -567,12 +630,29 @@ export default function App() {
           </div>
 
           {currentPoint && (
-            <div className="quiz-panel">
+            <div className="quiz-panel" style={{ backgroundColor: currentPoint.type === 'reference' ? '#fff9c4' : 'white' }}>
               <div style={{ fontSize: '11px', color: '#666', fontStyle: 'italic', fontWeight: 'bold' }}>{currentPoint.info || "Ponto Isolado"}</div>
-              <label style={{ fontWeight: 'bold', fontSize: 13 }}>Nome do ponto</label>
-              <input type="text" value={answer} onChange={(e) => { setAnswer(e.target.value); if(feedback) setFeedback(null); }} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} style={{ padding:'6px', borderRadius:4, border: feedback === 'error' ? '1px solid red' : '1px solid #ccc' }} autoFocus />
-              {feedback === 'error' && <div style={{ color: 'red', fontSize: '11px', marginTop: -4, fontWeight: 'bold' }}>Incorreto</div>}
-              <button onClick={checkAnswer} style={{ padding:'6px 12px', borderRadius:4, backgroundColor:'#4caf50', color:'white', border:'none', cursor:'pointer' }}>Responder</button>
+              
+              {currentPoint.type === 'reference' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1976d2', borderBottom: '2px solid #bbdefb', paddingBottom: '4px' }}>
+                        {currentPoint.name}
+                    </div>
+                    {currentPoint.description && (
+                        <div style={{ fontSize: '13px', color: '#333', lineHeight: '1.4' }}>
+                            {currentPoint.description}
+                        </div>
+                    )}
+                    <button onClick={checkAnswer} style={{ padding:'8px 12px', marginTop: '4px', borderRadius:4, backgroundColor:'#1976d2', color:'white', border:'none', cursor:'pointer', fontWeight: 'bold' }}>Entendido / Próximo ➜</button>
+                </div>
+              ) : (
+                <>
+                  <label style={{ fontWeight: 'bold', fontSize: 13 }}>Nome do ponto</label>
+                  <input type="text" value={answer} onChange={(e) => { setAnswer(e.target.value); if(feedback) setFeedback(null); }} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} style={{ padding:'6px', borderRadius:4, border: feedback === 'error' ? '1px solid red' : '1px solid #ccc' }} autoFocus />
+                  {feedback === 'error' && <div style={{ color: 'red', fontSize: '11px', marginTop: -4, fontWeight: 'bold' }}>Incorreto</div>}
+                  <button onClick={checkAnswer} style={{ padding:'6px 12px', borderRadius:4, backgroundColor:'#4caf50', color:'white', border:'none', cursor:'pointer' }}>Responder</button>
+                </>
+              )}
             </div>
           )}
 
