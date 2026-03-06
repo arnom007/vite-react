@@ -379,12 +379,20 @@ export default function App() {
       }
 
       if (labelEl) {
+        const currentZoom = map.current?.getZoom() || 10;
+        // Ocultar rótulos se o zoom for inferior a 8, exceto para o ponto atual
+        const shouldShowLabelByZoom = currentZoom >= 8 || isCurrent;
+
         // Lógica de exibição de nomes ajustada:
         // Apenas mostrar se foi adivinhado (isGuessed) OU o gabarito estiver ligado (showKey)
         // Não mostrar apenas porque é isCurrent
-        if (isGuessed || showKey) {
+        if ((isGuessed || showKey) && shouldShowLabelByZoom) {
             labelEl.style.display = '';
-            labelEl.style.fontSize = `${Math.max(10, Math.round((map.current?.getZoom() || 10) * 1.2))}px`;
+            // Limitar o tamanho máximo e mínimo da fonte
+            const minFontSize = 10;
+            const maxFontSize = 16;
+            const calculatedSize = Math.round(currentZoom * 1.2);
+            labelEl.style.fontSize = `${Math.min(Math.max(calculatedSize, minFontSize), maxFontSize)}px`;
             labelMarker.setLngLat(point.coords);
         } else {
              labelEl.style.display = 'none'; 
