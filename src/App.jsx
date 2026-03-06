@@ -486,15 +486,15 @@ export default function App() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '20px' }}>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img src="URL_FOTO_MOTA_AQUI" alt="Mota" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
+                  <img src="athos.png" alt="23/021" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
                   <span style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '6px' }}>#MOTA</span>
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img src="URL_FOTO_SIRIUS_AQUI" alt="Sirius 11" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
+                  <img src="/sirius.png" alt="Sirius 11" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
                   <span style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '6px' }}>#SIRIUS11</span>
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img src="URL_FOTO_CENTAURUS_AQUI" alt="Centaurus 25" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
+                  <img src="/centaurus.png" alt="Centaurus 25" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
                   <span style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '6px' }}>#CENTAURUS25</span>
               </div>
             </div>
