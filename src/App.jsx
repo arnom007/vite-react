@@ -579,7 +579,7 @@ export default function App() {
               </div>
               <div style={{ width: '55px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <img src="centaurus.png" alt="Centaurus 25" style={{ maxWidth: '100%', height: '35px', width: 'auto', objectFit: 'contain' }} />
-                  <span style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '6px', color: '#999', letterSpacing: '0.5px' }}>#CENTAURUS</span>
+                  <span style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '6px', color: '#999', letterSpacing: '0.5px' }}>#CENTAURUS25</span>
               </div>
             </div>
 
