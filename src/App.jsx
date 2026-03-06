@@ -348,9 +348,14 @@ export default function App() {
 
       // Lógica de Cores e Opacidade aprimorada
       if (point.type === 'reference') {
-          dot.style.backgroundColor = isGuessed ? 'green' : (isCurrent ? 'yellow' : '#9c27b0');
+          // Mantém a cor roxa (referência) ou amarelo se estiver selecionado
+          dot.style.backgroundColor = isCurrent ? 'yellow' : '#9c27b0';
+          // Estilo diferenciado para referência
+          dot.style.border = '2px solid white';
+          dot.style.width = '14px';
+          dot.style.height = '14px';
           
-          // Invisível até que seja a vez dele, ou o usuário acerte, ou o gabarito esteja ativado
+          // Invisível até que seja a vez dele, ou o usuário acerte (passe), ou o gabarito esteja ativado
           const shouldShowRef = isCurrent || isGuessed || showKey;
           dot.style.opacity = shouldShowRef ? '1' : '0';
           content.style.pointerEvents = shouldShowRef ? 'auto' : 'none'; // Impede clique fantasma
@@ -359,6 +364,9 @@ export default function App() {
           dot.style.backgroundColor = isGuessed ? 'green' : (isCurrent ? 'yellow' : (showKey ? 'orange' : 'red'));
           dot.style.opacity = (blindMode && !isGuessed && !isCurrent) ? '0' : '1';
           content.style.pointerEvents = 'auto';
+          dot.style.border = 'none';
+          dot.style.width = '12px';
+          dot.style.height = '12px';
       }
       
       content.style.width = blindMode ? '80px' : '40px';
@@ -371,24 +379,15 @@ export default function App() {
       }
 
       if (labelEl) {
-        if (point.type === 'reference') {
-            // Referência só exibe nome quando é o ponto atual.
-            if (isCurrent) {
-                labelEl.style.display = '';
-                labelEl.style.fontSize = `${Math.max(10, Math.round((map.current?.getZoom() || 10) * 1.2))}px`;
-                labelMarker.setLngLat(point.coords);
-            } else {
-                labelEl.style.display = 'none';
-            }
+        // Lógica de exibição de nomes ajustada:
+        // Apenas mostrar se foi adivinhado (isGuessed) OU o gabarito estiver ligado (showKey)
+        // Não mostrar apenas porque é isCurrent
+        if (isGuessed || showKey) {
+            labelEl.style.display = '';
+            labelEl.style.fontSize = `${Math.max(10, Math.round((map.current?.getZoom() || 10) * 1.2))}px`;
+            labelMarker.setLngLat(point.coords);
         } else {
-            // Normais exibem nome se acertado, atual ou gabarito ativado
-            if (isGuessed || showKey || isCurrent) {
-                labelEl.style.display = '';
-                labelEl.style.fontSize = `${Math.max(10, Math.round((map.current?.getZoom() || 10) * 1.2))}px`;
-                labelMarker.setLngLat(point.coords);
-            } else {
-                 labelEl.style.display = 'none'; 
-            }
+             labelEl.style.display = 'none'; 
         }
       }
     });
