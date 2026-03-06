@@ -487,7 +487,7 @@ export default function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '20px' }}>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <img src="athos.png" alt="23/021" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '6px' }}>#MOTA</span>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '6px' }}>#MTA</span>
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <img src="/sirius.png" alt="Sirius 11" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
