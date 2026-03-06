@@ -471,7 +471,7 @@ export default function App() {
       {/* TELA DE INTRODUÇÃO E IMAGENS */}
       {showIntro && !mapError && (
         <div style={{ position: 'absolute', inset: 0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
-          <div style={{ background:'white', padding:'20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
+          <div style={{ background:'white', padding:'30px 20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
             <h3 style={{ marginTop: 0, textAlign: 'center' }}>Atalhos do Jogo:</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', alignItems: 'center', marginBottom: 20 }}>
                 <b>Enter</b><span>Confirmar</span>
@@ -484,24 +484,25 @@ export default function App() {
                "Mil cairão ao teu lado, e dez mil à tua direita..."
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '20px' }}>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img src="athos.png" alt="23/021" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '6px' }}>#MTA</span>
-              </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img src="/sirius.png" alt="Sirius 11" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '6px' }}>#SIRIUS11</span>
-              </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img src="/centaurus.png" alt="Centaurus 25" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#eee' }} />
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '6px' }}>#CENTAURUS25</span>
-              </div>
-            </div>
-
-            <div style={{ display:'flex', justifyContent:'space-between' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginTop: '30px' }}>
                 <button onClick={() => { setSelectedSquadron(null); }} style={{ padding:'10px 20px', background:'#f44336', color:'white', borderRadius:6, border:'none', cursor: 'pointer' }}>Voltar</button>
                 <button onClick={() => { setShowIntro(false); setStartTime(Date.now()); }} style={{ padding:'10px 20px', background:'#4caf50', color:'white', borderRadius:6, border:'none', cursor: 'pointer', fontWeight: 'bold' }}>Começar</button>
+            </div>
+
+            {/* Imagens Menores no Rodapé */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '25px', marginTop: '40px', opacity: 0.8 }}>
+              <div style={{ width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <img src="athos.png" alt="23/021" style={{ width: '100%', height: '60px', objectFit: 'contain', filter: 'drop-shadow(0px 2px 2px rgba(0,0,0,0.2))' }} />
+                  <span style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '6px', color: '#666' }}>#MTA</span>
+              </div>
+              <div style={{ width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <img src="/sirius.png" alt="Sirius 11" style={{ width: '100%', height: '60px', objectFit: 'contain', filter: 'drop-shadow(0px 2px 2px rgba(0,0,0,0.2))' }} />
+                  <span style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '6px', color: '#666' }}>#SIRIUS11</span>
+              </div>
+              <div style={{ width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <img src="/centaurus.png" alt="Centaurus 25" style={{ width: '100%', height: '60px', objectFit: 'contain', filter: 'drop-shadow(0px 2px 2px rgba(0,0,0,0.2))' }} />
+                  <span style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '6px', color: '#666' }}>#CENTAURUS25</span>
+              </div>
             </div>
           </div>
         </div>
