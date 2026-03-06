@@ -121,6 +121,7 @@ export default function App() {
     return parts.join(' ');
   };
 
+  // Garante que Referências vão para o fim da fila da Área
   const getSortedAreaIds = useCallback((areaName) => {
     const allNames = activeAreas[areaName] || [];
     const limitNames = (selectedSquadron === '1EIA' ? AREA_LIMITS[areaName] : []) || [];
@@ -278,22 +279,18 @@ export default function App() {
             const el = document.createElement('div');
             el.className = 'marker-root';
             el.style.cssText = 'width:0px;height:0px;display:flex;align-items:center;justify-content:center;overflow:visible;';
+            
             const content = document.createElement('div');
             content.className = 'marker-content';
             content.style.cssText = 'width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:width 0.3s, height 0.3s;';
+            
             const hint = document.createElement('div');
             hint.className = 'hint-pulse';
             hint.style.cssText = 'position:absolute;width:100%;height:100%;background-color:rgba(255,255,255,0.8);border-radius:50%;transform:scale(0.5);opacity:0;pointer-events:none;';
+            
             const dot = document.createElement('div');
             dot.className = 'marker-dot';
             dot.style.cssText = 'width:12px;height:12px;background-color:red;border-radius:50%;box-shadow:0 0 5px rgba(0,0,0,0.6);transition:opacity 0.2s ease;';
-            
-            if (point.type === 'reference') {
-                dot.style.backgroundColor = '#9c27b0'; 
-                dot.style.border = '2px solid white';
-                dot.style.width = '14px';
-                dot.style.height = '14px';
-            }
 
             content.appendChild(hint); content.appendChild(dot); el.appendChild(content);
 
@@ -321,6 +318,8 @@ export default function App() {
             
             if (pitchInputRef.current) pitchInputRef.current.value = p;
             if (bearingInputRef.current) bearingInputRef.current.value = b;
+            
+            // O segredo da bússola: aplicamos a rotação SÓ no container pai, mantendo o svg perfeitamente centrado.
             if (compassWrapperRef.current) compassWrapperRef.current.style.transform = `rotate(${b}deg)`;
             if (bearingTextRef.current) bearingTextRef.current.innerText = `${b}°`;
           });
@@ -337,6 +336,7 @@ export default function App() {
     };
   }, [currentKeyIndex, activeKey, selectedSquadron, activePointsData]);
 
+  // Atualização Visual Dinâmica dos Pontos
   useEffect(() => {
     if (!isMapLoaded) return;
     markersRef.current.forEach((rec, id) => {
@@ -346,17 +346,23 @@ export default function App() {
       const isGuessed = guessed.includes(id);
       const isCurrent = currentPoint && currentPoint.id === id;
 
+      // Lógica de Cores e Opacidade aprimorada
       if (point.type === 'reference') {
-          dot.style.backgroundColor = isCurrent ? 'yellow' : '#9c27b0';
+          dot.style.backgroundColor = isGuessed ? 'green' : (isCurrent ? 'yellow' : '#9c27b0');
+          
+          // Invisível até que seja a vez dele, ou o usuário acerte, ou o gabarito esteja ativado
+          const shouldShowRef = isCurrent || isGuessed || showKey;
+          dot.style.opacity = shouldShowRef ? '1' : '0';
+          content.style.pointerEvents = shouldShowRef ? 'auto' : 'none'; // Impede clique fantasma
       } else {
+          // Pontos Normais
           dot.style.backgroundColor = isGuessed ? 'green' : (isCurrent ? 'yellow' : (showKey ? 'orange' : 'red'));
+          dot.style.opacity = (blindMode && !isGuessed && !isCurrent) ? '0' : '1';
+          content.style.pointerEvents = 'auto';
       }
       
       content.style.width = blindMode ? '80px' : '40px';
       content.style.height = blindMode ? '80px' : '40px';
-      
-      // Pontos de referência não ficam visíveis no modo às cegas até serem o ponto atual
-      dot.style.opacity = (blindMode && !isGuessed && !isCurrent) ? '0' : '1';
 
       if (hint) {
           if (isCurrent && hintTrigger > 0) {
@@ -365,29 +371,37 @@ export default function App() {
       }
 
       if (labelEl) {
-        if (isGuessed || showKey || isCurrent) {
-            // Pontos de referência não mostram o nome no modo gabarito se não foram adivinhados, a menos que seja o ponto atual
-            if (point.type === 'reference' && !isCurrent && !showKey) {
-                labelEl.style.display = 'none';
-            } else {
+        if (point.type === 'reference') {
+            // Referência só exibe nome quando é o ponto atual.
+            if (isCurrent) {
                 labelEl.style.display = '';
                 labelEl.style.fontSize = `${Math.max(10, Math.round((map.current?.getZoom() || 10) * 1.2))}px`;
                 labelMarker.setLngLat(point.coords);
+            } else {
+                labelEl.style.display = 'none';
             }
         } else {
-             labelEl.style.display = 'none'; 
+            // Normais exibem nome se acertado, atual ou gabarito ativado
+            if (isGuessed || showKey || isCurrent) {
+                labelEl.style.display = '';
+                labelEl.style.fontSize = `${Math.max(10, Math.round((map.current?.getZoom() || 10) * 1.2))}px`;
+                labelMarker.setLngLat(point.coords);
+            } else {
+                 labelEl.style.display = 'none'; 
+            }
         }
       }
     });
   }, [guessed, currentPoint, showKey, blindMode, hintTrigger, isMapLoaded]);
 
   // Controles
-  const revealAll = (show) => { setShowKey(show); markersRef.current.forEach((rec) => { if (rec.labelEl) rec.labelEl.style.display = show ? '' : 'none'; }); };
+  const revealAll = (show) => { setShowKey(show); markersRef.current.forEach((rec) => { if (rec.labelEl && rec.point.type !== 'reference') rec.labelEl.style.display = show ? '' : 'none'; }); };
+  
   const resetGame = () => { 
       setGuessed([]); setCurrentPoint(null); setAnswer(''); setFeedback(null); 
       setStartTime(Date.now()); setFinalTime(0); setShowCompletion(false); setShowKey(false); 
       if (map.current) {
-          map.current.flyTo({ center: INITIAL_CENTER, zoom: 9.5, pitch: 60, bearing: 130 - MAP_DECLINATION }); 
+          map.current.flyTo({ center: INITIAL_CENTER, zoom: 8.5, pitch: 60, bearing: 130 - MAP_DECLINATION }); 
           if (compassWrapperRef.current) compassWrapperRef.current.style.transform = `rotate(130deg)`;
           if (bearingTextRef.current) bearingTextRef.current.innerText = `130°`;
           if (pitchInputRef.current) pitchInputRef.current.value = 60;
@@ -409,9 +423,11 @@ export default function App() {
         if (startP) { setCurrentPoint(startP); if (map.current) map.current.flyTo({ center: startP.coords }); }
     }
   };
+  
   const startRandomMode = () => {
     setRandomMode(true); setAreaMode(false);
     if (!currentPoint) {
+        // Modo aleatório não usa pontos de referência
         const rem = activePointsData.filter(p => !guessed.includes(p.id) && p.type !== 'reference');
         const next = rem.length ? rem[Math.floor(Math.random() * rem.length)] : null;
         if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
@@ -495,6 +511,7 @@ export default function App() {
   };
 
   const checkAnswer = () => {
+    // Pula validação se for ponto apenas de referência visual
     if (currentPoint && currentPoint.type === 'reference') {
        processCorrectAnswer();
        return;
@@ -519,6 +536,7 @@ export default function App() {
   const missingPoints = activePointsData.filter(p => !guessed.includes(p.id) && p.type !== 'reference').sort((a,b)=>a.name.localeCompare(b.name));
   const answeredPoints = activePointsData.filter(p => guessed.includes(p.id) && p.type !== 'reference').sort((a,b)=>a.name.localeCompare(b.name));
 
+  // TELA DE SELEÇÃO INICIAL
   if (!selectedSquadron) {
     return (
       <div className="home-screen">
@@ -548,6 +566,7 @@ export default function App() {
           </div>
       )}
 
+      {/* TELA DE INTRODUÇÃO E IMAGENS */}
       {showIntro && !mapError && (
         <div style={{ position: 'absolute', inset: 0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
           <div style={{ background:'white', padding:'30px 20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
@@ -568,7 +587,8 @@ export default function App() {
                 <button onClick={() => { setShowIntro(false); setStartTime(Date.now()); }} style={{ padding:'10px 20px', background:'#4caf50', color:'white', borderRadius:6, border:'none', cursor: 'pointer', fontWeight: 'bold' }}>Começar</button>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '40px', opacity: 0.50 }}>
+            {/* Imagens Menores e Discretas no Rodapé */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '40px', opacity: 0.35 }}>
               <div style={{ width: '55px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <img src="athos.png" alt="23/021" style={{ maxWidth: '100%', height: '35px', width: 'auto', objectFit: 'contain' }} />
                   <span style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '6px', color: '#999', letterSpacing: '0.5px' }}>#MTA</span>
@@ -579,7 +599,7 @@ export default function App() {
               </div>
               <div style={{ width: '55px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <img src="centaurus.png" alt="Centaurus 25" style={{ maxWidth: '100%', height: '35px', width: 'auto', objectFit: 'contain' }} />
-                  <span style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '6px', color: '#999', letterSpacing: '0.5px' }}>#CENTAURUS25</span>
+                  <span style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '6px', color: '#999', letterSpacing: '0.5px' }}>#CENTAURUS</span>
               </div>
             </div>
 
@@ -587,6 +607,7 @@ export default function App() {
         </div>
       )}
 
+      {/* O MAPA */}
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
       {!mapError && !showIntro && (
@@ -601,27 +622,33 @@ export default function App() {
           <div className="compass-container" style={{ minWidth: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' }}>
             <div className="compass-circle" style={{ width: 60, height: 60, border: 'none', background: 'rgba(255,255,255,0.9)', borderRadius: '50%', position: 'relative', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}>
               
+              {/* Fundo da bússola em SVG (Traços e Letras - Não rodam) */}
               <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+                {/* Eixos Principais */}
                 <line x1="50" y1="2" x2="50" y2="10" stroke="#333" strokeWidth="2" />
                 <line x1="50" y1="90" x2="50" y2="98" stroke="#333" strokeWidth="2" />
                 <line x1="2" y1="50" x2="10" y2="50" stroke="#333" strokeWidth="2" />
                 <line x1="90" y1="50" x2="98" y2="50" stroke="#333" strokeWidth="2" />
                 
+                {/* 45 Graus */}
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(45 50 50)" />
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(135 50 50)" />
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(225 50 50)" />
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(315 50 50)" />
                 
+                {/* 22.5 Graus */}
                 {[22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5].map(deg => (
                   <line key={deg} x1="50" y1="2" x2="50" y2="6" stroke="#aaa" strokeWidth="1" transform={`rotate(${deg} 50 50)`} />
                 ))}
                 
+                {/* Letras */}
                 <text x="50" y="24" fontSize="16" textAnchor="middle" fill="#d32f2f" fontWeight="bold" fontFamily="Arial">N</text>
                 <text x="50" y="85" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">S</text>
                 <text x="82" y="55" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">E</text>
                 <text x="18" y="55" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">W</text>
               </svg>
               
+              {/* Agulha em SVG (Esta div que roda) */}
               <div ref={compassWrapperRef} style={{ position: 'absolute', inset: 0, zIndex: 2, transform: 'rotate(130deg)', transition: 'transform 0.1s ease-out' }}>
                 <svg viewBox="0 0 100 100" width="100%" height="100%">
                   <polygon points="45,50 55,50 50,15" fill="#f44336" stroke="#b71c1c" strokeWidth="1" />
