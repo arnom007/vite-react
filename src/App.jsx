@@ -354,7 +354,9 @@ export default function App() {
       
       content.style.width = blindMode ? '80px' : '40px';
       content.style.height = blindMode ? '80px' : '40px';
-      dot.style.opacity = (blindMode && !isGuessed && point.type !== 'reference') ? '0' : '1';
+      
+      // Pontos de referência não ficam visíveis no modo às cegas até serem o ponto atual
+      dot.style.opacity = (blindMode && !isGuessed && !isCurrent) ? '0' : '1';
 
       if (hint) {
           if (isCurrent && hintTrigger > 0) {
@@ -364,9 +366,14 @@ export default function App() {
 
       if (labelEl) {
         if (isGuessed || showKey || isCurrent) {
-            labelEl.style.display = '';
-            labelEl.style.fontSize = `${Math.max(10, Math.round((map.current?.getZoom() || 10) * 1.2))}px`;
-            labelMarker.setLngLat(point.coords);
+            // Pontos de referência não mostram o nome no modo gabarito se não foram adivinhados, a menos que seja o ponto atual
+            if (point.type === 'reference' && !isCurrent && !showKey) {
+                labelEl.style.display = 'none';
+            } else {
+                labelEl.style.display = '';
+                labelEl.style.fontSize = `${Math.max(10, Math.round((map.current?.getZoom() || 10) * 1.2))}px`;
+                labelMarker.setLngLat(point.coords);
+            }
         } else {
              labelEl.style.display = 'none'; 
         }
@@ -561,8 +568,7 @@ export default function App() {
                 <button onClick={() => { setShowIntro(false); setStartTime(Date.now()); }} style={{ padding:'10px 20px', background:'#4caf50', color:'white', borderRadius:6, border:'none', cursor: 'pointer', fontWeight: 'bold' }}>Começar</button>
             </div>
 
-            {/* Imagens Menores no Rodapé (CORRIGIDO) */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '40px', opacity: 0.35 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '40px', opacity: 0.50 }}>
               <div style={{ width: '55px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <img src="athos.png" alt="23/021" style={{ maxWidth: '100%', height: '35px', width: 'auto', objectFit: 'contain' }} />
                   <span style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '6px', color: '#999', letterSpacing: '0.5px' }}>#MTA</span>
