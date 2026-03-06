@@ -2,7 +2,7 @@
 // Exporta a lista de pontos para ser usada no App.jsx
 
 export const pointsData = [
-  // --- PONTOS ORIGINAIS (Alguns atualizados conforme pedido) ---
+  // --- PONTOS ORIGINAIS ---
   { id: 1, name: 'Júpiter', aliases: ['jupiter'], coords: [-47.4500, -21.9878], info: 'Ponto da área de Tráfego AFA' },
   { id: 2, name: 'Prédios Brancos', aliases: ['predios brancos'], coords: [-47.4142, -21.9872], info: 'Ponto da área de Tráfego AFA' },
   { id: 3, name: 'Trevo', aliases: ['trevo'], coords: [-47.3975, -22.0106], info: 'Ponto da área de Tráfego AFA' },
@@ -22,7 +22,7 @@ export const pointsData = [
   { id: 21, name: 'Área Vermelha 2100', aliases: ['area vermelha 2100'], coords: [-47.6575, -21.7253], info: 'Tr. Traf de EMG Peixes ⚠️' },
   { id: 22, name: 'Santa Rita do Passa Quatro 2800', aliases: ['santa rita do passa quatro 2800'], coords: [-47.4700, -21.6425], info: 'Tr. Traf de EMG Taurus ⚠️' },
   { id: 23, name: 'Lagoa do Aeroclube', aliases: ['lagoa do aeroclube'], coords: [-47.4233, -22.0403], info: 'Ponto da área de Tráfego AFA' },
-  { id: 24, name: 'Matão', aliases: ['matao'], coords: [-48.3636, -21.5967], info: 'Limite da área de Aquárius W 📍 | Limite da área de Peixes W 📍' }, // Coords Atualizadas
+  { id: 24, name: 'Matão', aliases: ['matao'], coords: [-48.3636, -21.5967], info: 'Limite da área de Aquárius W 📍 | Limite da área de Peixes W 📍' },
   { id: 25, name: 'Cravinhos', aliases: ['cravinhos'], coords: [-47.7278, -21.3286], info: 'Ponto Isolado' },
   { id: 26, name: 'Cajuru', aliases: ['cajuru'], coords: [-47.3058, -21.2731], info: 'Ponto Isolado' },
   { id: 27, name: 'Mococa', aliases: ['mococa'], coords: [-47.0003, -21.4756], info: 'Limite da área de Taurus 📍 | Limite da área de Libra Alta 📍' },
@@ -30,14 +30,14 @@ export const pointsData = [
   { id: 29, name: 'Santa Rita do Passa Quatro', aliases: ['santa rita do passa quatro'], coords: [-47.4803, -21.7086], info: 'Limite da área de Taurus 📍' },
   { id: 30, name: 'Porto Ferreira', aliases: ['porto ferreira'], coords: [-47.4833, -21.8570], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Taurus 📍 | Limite da área de Tobogã 📍 | Ponto de Ligação Alta' },
   { id: 31, name: 'Leme', aliases: ['leme'], coords: [-47.3847, -22.1811], info: 'Limite da área de Capricórnio 📍' },
-  { id: 32, name: 'Brotas', aliases: ['brotas'], coords: [-48.1275, -22.2817], info: 'Limite da área de Capricórnio W 📍 | Limite da área de Aquárius W 📍' }, // Coords Atualizadas
-  { id: 33, name: 'Iracemápolis', aliases: ['iracemapolis'], coords: [-47.5136, -22.5872], info: 'Limite da área de Capricórnio W 📍' }, // Coords Atualizadas
+  { id: 32, name: 'Brotas', aliases: ['brotas'], coords: [-48.1275, -22.2817], info: 'Limite da área de Capricórnio W 📍 | Limite da área de Aquárius W 📍' },
+  { id: 33, name: 'Iracemópolis', aliases: ['iracemopolis'], coords: [-47.5136, -22.5872], info: 'Limite da área de Capricórnio W 📍' },
   { id: 34, name: 'Cordeirópolis', aliases: ['cordeiropolis'], coords: [-47.4578, -22.4822], info: 'Limite da área de Capricórnio 📍 | Limite da área de Capricórnio W 📍' },
   { id: 35, name: 'Rio Claro', aliases: ['rio claro'], coords: [-47.5636, -22.4042], info: 'Ponto da área de Capricornio' },
   { id: 36, name: 'Araras', aliases: ['araras'], coords: [-47.3811, -22.3647], info: 'Limite da área de Capricórnio 📍' },
   { id: 37, name: 'Santa Cruz da Conceição', aliases: ['santa cruz da conceicao'], coords: [-47.4517, -22.1378], info: 'Ponto da área de Capricornio' },
   { id: 38, name: 'Analândia', aliases: ['analandia'], coords: [-47.6611, -22.1294], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍 | Limite da área de Tobogã 📍' },
-  { id: 39, name: 'Trevo Aguaí Anhanguera', aliases: ['trevo aguai anhanguera'], coords: [-47.4320, -22.0383], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍 | Limite da área de Tobogã 📍' },
+  { id: 39, name: 'Trevo Aguaí Anhanguera', aliases: ['trevo aguai anhanguera'], coords: [-47.4320, -22.0383], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍 | Ponto da área de Tráfego AFA | Limite da área de Tobogã 📍' },
   { id: 40, name: 'Itirapina', aliases: ['itirapina'], coords: [-47.8158, -22.2575], info: 'Limite da área de Capricórnio 📍 | Limite da área de Aquárius 📍' },
   { id: 41, name: 'Araraquara', aliases: ['araraquara'], coords: [-48.1670, -21.7894], info: 'Limite da área de Aquárius W 📍 | Limite da área de Peixes W 📍' },
   { id: 42, name: 'São Carlos', aliases: ['sao carlos'], coords: [-47.8903, -22.0164], info: 'Ponto da área de Aquarius' },
@@ -52,16 +52,14 @@ export const pointsData = [
   { id: 52, name: 'Pedágio São Simão', aliases: ['pedagio sao simao'], coords: [-47.6642, -21.4144], info: 'Limite da área de Peixes 📍 | Limite da área de Taurus 📍 | Limite da área de Peixes W 📍' },
   { id: 53, name: 'Santa Cruz da Esperança', aliases: ['santa cruz da esperanca'], coords: [-47.4283, -21.2920], info: 'Limite da área de Taurus 📍' },
   { id: 54, name: 'Fazenda da Serra', aliases: ['fazenda da serra'], coords: [-47.2111, -21.3578], info: 'Limite da área de Taurus 📍' },
-  { id: 55, name: 'Américo Brasiliense', aliases: ['americo brasiliense'], coords: [-48.1222, -21.7408], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Aquárius W 📍 | Limite da área de Peixes W 📍' },
-  { id: 56, name: 'Guatapará', aliases: ['guatapara'], coords: [-48.0377, -21.4944], info: 'Limite da área de Peixes W 📍' }, // Coords Atualizadas
+  { id: 55, name: 'Américo Brasiliense', aliases: ['americo brasiliense'], coords: [-48.1222, -21.7408], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Aquárius W 📍 | Limite da pedágio Peixes W 📍' },
+  { id: 56, name: 'Guatapará', aliases: ['guatapara'], coords: [-48.0377, -21.4944], info: 'Limite da área de Peixes W 📍' },
   { id: 57, name: 'Corumbataí', aliases: ['corumbatai'], coords: [-47.6228, -22.2214], info: 'Ponto da área de Capricornio' },
   { id: 58, name: 'Luís Antônio', aliases: ['luis antonio'], coords: [-47.7008, -21.5519], info: 'Ponto da área de Peixes' },
   { id: 59, name: 'São Simão', aliases: ['sao simao'], coords: [-47.5556, -21.4794], info: 'Ponto da área de Taurus' },
   { id: 60, name: 'Sumidouro', aliases: ['sumidouro'], coords: [-47.3467, -21.9636], info: 'Ponto da área de Tráfego AFA' },
   { id: 61, name: 'Estrada SO/SGT', aliases: ['estrada so sgt'], coords: [-47.3447, -22.0067], info: 'Ponto da área de Tráfego AFA' },
   { id: 62, name: 'Descalvado', aliases: ['descalvado'], coords: [-47.6258, -21.9117], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Tobogã 📍' },
-
-  // --- NOVOS PONTOS (IDs 63+) ---
   { id: 63, name: 'Santa Cruz das Palmeiras', aliases: ['santa cruz das palmeiras'], coords: [-47.2481, -21.8258], info: 'Limite da área de Libra Alta 📍 | Limite da área de Virgem Alta 📍' },
   { id: 64, name: 'Tambaú', aliases: ['tambau'], coords: [-47.2717, -21.7056], info: 'Limite da área de Libra Alta 📍' },
   { id: 65, name: 'São Sebastião da Grama', aliases: ['sao sebastiao da grama'], coords: [-46.8272, -21.7108], info: 'Limite da área de Libra Alta 📍 | Limite da área de Virgem Alta 📍' },
@@ -71,12 +69,24 @@ export const pointsData = [
   { id: 69, name: 'Ponte na Aguaí sobre Rio Mogi', aliases: ['ponte na aguai sobre rio mogi'], coords: [-47.2992, -22.0072], info: 'Limite da área de Virgem Alta 📍 | Limite da área de Gêmeos Alta 📍' },
   { id: 70, name: 'Mogi-guaçu', aliases: ['mogi-guacu', 'mogi guacu'], coords: [-46.9383, -22.3656], info: 'Limite da área de Gêmeos Alta 📍' },
   { id: 71, name: 'Conchal', aliases: ['conchal'], coords: [-47.1694, -22.3378], info: 'Limite da área de Gêmeos Alta 📍' },
-  // ... seus pontos anteriores ...
 
-  // --- NOVAS ADIÇÕES ---
-  { id: 72, name: 'Santa Rosa', aliases: ['santa rosa'], coords: [-47.3705, -21.4435], info: 'Ponto da área de Taurus (obs: não usa)' },
-  { id: 73, name: 'Represa', aliases: ['represa'], coords: [-47.3664, -21.4509], info: 'Ponto da área de Taurus' },
-  { id: 74, name: 'Telhados Brancos', aliases: ['telhados brancos'], coords: [-47.3664, -21.4509], info: 'Ponto da área de Taurus' },
-  { id: 75, name: 'Santa Gertrudes', aliases: ['santa gertrudes'], coords: [-47.5327, -22.4573], info: 'Ponto da área de Capricornio' },
-  { id: 76, name: 'Ribeirão Bonito', aliases: ['ribeirao bonito'], coords: [-48.1766, -22.0686], info: 'Ponto da área de Aquárius W' },
+  // --- PONTOS DE REFERÊNCIA (EXEMPLOS) ---
+  // type: 'reference' garante que não peçam resposta digitada.
+  // description: o texto que vai ajudar na orientação visual.
+  { 
+    id: 100, 
+    name: 'Ref: Pedreira Abandonada', 
+    type: 'reference', // IMPORTANTÍSSIMO!
+    coords: [-47.4100, -22.3000], 
+    info: 'Referência Visual Capricornio 👁️',
+    description: 'Se você estiver sobre esta pedreira, a cidade de Leme estará a 15 milhas no rumo Norte (N).'
+  },
+  { 
+    id: 101, 
+    name: 'Ref: Represa em Y', 
+    type: 'reference', 
+    coords: [-47.6000, -22.1800], 
+    info: 'Referência Visual Capricornio 👁️',
+    description: 'A base do Y aponta diretamente para o pico de Analândia. Ideal para reorientação rápida.'
+  }
 ];
