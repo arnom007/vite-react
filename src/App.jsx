@@ -61,7 +61,7 @@ export default function App() {
   const map = useRef(null);
   const markersRef = useRef(new Map());
   
-  const compassWrapperRef = useRef(null);
+  const compassPointerRef = useRef(null);
   const bearingTextRef = useRef(null);
   const pitchInputRef = useRef(null);
   const bearingInputRef = useRef(null);
@@ -121,7 +121,6 @@ export default function App() {
     return parts.join(' ');
   };
 
-  // Garante que Referências vão para o fim da fila da Área
   const getSortedAreaIds = useCallback((areaName) => {
     const allNames = activeAreas[areaName] || [];
     const limitNames = (selectedSquadron === '1EIA' ? AREA_LIMITS[areaName] : []) || [];
@@ -154,12 +153,32 @@ export default function App() {
     return () => document.head.removeChild(link);
   }, []);
 
+  // CORREÇÃO: Lógica de troca de área imediata
   useEffect(() => {
     if(selectedArea) {
-      setAreaQueue(getSortedAreaIds(selectedArea));
+      const newQueue = getSortedAreaIds(selectedArea);
+      setAreaQueue(newQueue);
       setAreaPointIndex(0);
+      
+      // Se estivermos ativamente no modo "Áreas", forçamos o pulo para o primeiro ponto da nova área selecionada.
+      if (areaMode && newQueue.length > 0 && map.current) {
+         let startP;
+         if (randomAreaSequence) {
+             const un = newQueue.filter(id => !guessed.includes(id));
+             startP = activePointsData.find(pt => pt.id === (un.length > 0 ? un[0] : newQueue[0]));
+         } else {
+             startP = activePointsData.find(pt => pt.id === newQueue[0]); 
+         }
+         
+         if (startP) {
+             setCurrentPoint(startP);
+             setAnswer('');
+             setFeedback(null);
+             map.current.flyTo({ center: startP.coords });
+         }
+      }
     }
-  }, [selectedArea, getSortedAreaIds]);
+  }, [selectedArea, getSortedAreaIds, areaMode, randomAreaSequence, guessed, activePointsData]);
 
   useEffect(() => {
     if (!isMapLoaded || !map.current) return;
@@ -319,8 +338,10 @@ export default function App() {
             if (pitchInputRef.current) pitchInputRef.current.value = p;
             if (bearingInputRef.current) bearingInputRef.current.value = b;
             
-            // O segredo da bússola: aplicamos a rotação SÓ no container pai, mantendo o svg perfeitamente centrado.
-            if (compassWrapperRef.current) compassWrapperRef.current.style.transform = `rotate(${b}deg)`;
+            // CORREÇÃO DA BÚSSOLA: Aplica a rotação apenas na agulha e assegura que ela fica fixa no centro
+            if (compassPointerRef.current) {
+                compassPointerRef.current.style.transform = `rotate(${b}deg)`;
+            }
             if (bearingTextRef.current) bearingTextRef.current.innerText = `${b}°`;
           });
         });
@@ -346,21 +367,16 @@ export default function App() {
       const isGuessed = guessed.includes(id);
       const isCurrent = currentPoint && currentPoint.id === id;
 
-      // Lógica de Cores e Opacidade aprimorada
       if (point.type === 'reference') {
-          // Mantém a cor roxa (referência) ou amarelo se estiver selecionado
           dot.style.backgroundColor = isCurrent ? 'yellow' : '#9c27b0';
-          // Estilo diferenciado para referência
           dot.style.border = '2px solid white';
           dot.style.width = '14px';
           dot.style.height = '14px';
           
-          // Invisível até que seja a vez dele, ou o usuário acerte (passe), ou o gabarito esteja ativado
           const shouldShowRef = isCurrent || isGuessed || showKey;
           dot.style.opacity = shouldShowRef ? '1' : '0';
-          content.style.pointerEvents = shouldShowRef ? 'auto' : 'none'; // Impede clique fantasma
+          content.style.pointerEvents = shouldShowRef ? 'auto' : 'none';
       } else {
-          // Pontos Normais
           dot.style.backgroundColor = isGuessed ? 'green' : (isCurrent ? 'yellow' : (showKey ? 'orange' : 'red'));
           dot.style.opacity = (blindMode && !isGuessed && !isCurrent) ? '0' : '1';
           content.style.pointerEvents = 'auto';
@@ -380,28 +396,35 @@ export default function App() {
 
       if (labelEl) {
         const currentZoom = map.current?.getZoom() || 10;
-        // Ocultar rótulos se o zoom for inferior a 8, exceto para o ponto atual
         const shouldShowLabelByZoom = currentZoom >= 8 || isCurrent;
 
-        // Lógica de exibição de nomes ajustada:
-        // Apenas mostrar se foi adivinhado (isGuessed) OU o gabarito estiver ligado (showKey)
-        // Não mostrar apenas porque é isCurrent
-        if ((isGuessed || showKey) && shouldShowLabelByZoom) {
-            labelEl.style.display = '';
-            // Limitar o tamanho máximo e mínimo da fonte
-            const minFontSize = 10;
-            const maxFontSize = 16;
-            const calculatedSize = Math.round(currentZoom * 1.2);
-            labelEl.style.fontSize = `${Math.min(Math.max(calculatedSize, minFontSize), maxFontSize)}px`;
-            labelMarker.setLngLat(point.coords);
+        if (point.type === 'reference') {
+            if ((isCurrent || (isGuessed && showKey)) && shouldShowLabelByZoom) {
+                labelEl.style.display = '';
+                const minFontSize = 10;
+                const maxFontSize = 16;
+                const calculatedSize = Math.round(currentZoom * 1.2);
+                labelEl.style.fontSize = `${Math.min(Math.max(calculatedSize, minFontSize), maxFontSize)}px`;
+                labelMarker.setLngLat(point.coords);
+            } else {
+                labelEl.style.display = 'none';
+            }
         } else {
-             labelEl.style.display = 'none'; 
+            if ((isGuessed || showKey) && shouldShowLabelByZoom) {
+                labelEl.style.display = '';
+                const minFontSize = 10;
+                const maxFontSize = 16;
+                const calculatedSize = Math.round(currentZoom * 1.2);
+                labelEl.style.fontSize = `${Math.min(Math.max(calculatedSize, minFontSize), maxFontSize)}px`;
+                labelMarker.setLngLat(point.coords);
+            } else {
+                 labelEl.style.display = 'none'; 
+            }
         }
       }
     });
   }, [guessed, currentPoint, showKey, blindMode, hintTrigger, isMapLoaded]);
 
-  // Controles
   const revealAll = (show) => { setShowKey(show); markersRef.current.forEach((rec) => { if (rec.labelEl && rec.point.type !== 'reference') rec.labelEl.style.display = show ? '' : 'none'; }); };
   
   const resetGame = () => { 
@@ -409,7 +432,7 @@ export default function App() {
       setStartTime(Date.now()); setFinalTime(0); setShowCompletion(false); setShowKey(false); 
       if (map.current) {
           map.current.flyTo({ center: INITIAL_CENTER, zoom: 8.5, pitch: 60, bearing: 130 - MAP_DECLINATION }); 
-          if (compassWrapperRef.current) compassWrapperRef.current.style.transform = `rotate(130deg)`;
+          if (compassPointerRef.current) compassPointerRef.current.style.transform = `rotate(130deg)`;
           if (bearingTextRef.current) bearingTextRef.current.innerText = `130°`;
           if (pitchInputRef.current) pitchInputRef.current.value = 60;
           if (bearingInputRef.current) bearingInputRef.current.value = 130;
@@ -434,7 +457,6 @@ export default function App() {
   const startRandomMode = () => {
     setRandomMode(true); setAreaMode(false);
     if (!currentPoint) {
-        // Modo aleatório não usa pontos de referência
         const rem = activePointsData.filter(p => !guessed.includes(p.id) && p.type !== 'reference');
         const next = rem.length ? rem[Math.floor(Math.random() * rem.length)] : null;
         if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
@@ -502,12 +524,8 @@ export default function App() {
         } else {
              const nextAreaIdx = (areaList.indexOf(selectedArea) + 1) % areaList.length;
              setAreaIndex(nextAreaIdx); setSelectedArea(areaList[nextAreaIdx]); 
-             const nextIds = getSortedAreaIds(areaList[nextAreaIdx]);
-             const avail = nextIds.filter(id => !updated.includes(id));
-             if (avail.length) {
-                 const firstPoint = activePointsData.find(p => p.id === (randomAreaSequence ? avail[Math.floor(Math.random() * avail.length)] : avail[0]));
-                 setCurrentPoint(firstPoint || null); setAnswer(''); if (map.current && firstPoint) map.current.flyTo({ center: firstPoint.coords });
-             } else { handleCompletion(); setCurrentPoint(null); }
+             
+             // NOTA: Como selecionou uma nova área, o useEffect fará a gestão para saltar para o primeiro ponto
         }
       } else if (randomMode) {
         const rem = activePointsData.filter(p => !updated.includes(p.id) && p.type !== 'reference'); 
@@ -518,7 +536,6 @@ export default function App() {
   };
 
   const checkAnswer = () => {
-    // Pula validação se for ponto apenas de referência visual
     if (currentPoint && currentPoint.type === 'reference') {
        processCorrectAnswer();
        return;
@@ -543,7 +560,6 @@ export default function App() {
   const missingPoints = activePointsData.filter(p => !guessed.includes(p.id) && p.type !== 'reference').sort((a,b)=>a.name.localeCompare(b.name));
   const answeredPoints = activePointsData.filter(p => guessed.includes(p.id) && p.type !== 'reference').sort((a,b)=>a.name.localeCompare(b.name));
 
-  // TELA DE SELEÇÃO INICIAL
   if (!selectedSquadron) {
     return (
       <div className="home-screen">
@@ -631,32 +647,28 @@ export default function App() {
               
               {/* Fundo da bússola em SVG (Traços e Letras - Não rodam) */}
               <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-                {/* Eixos Principais */}
                 <line x1="50" y1="2" x2="50" y2="10" stroke="#333" strokeWidth="2" />
                 <line x1="50" y1="90" x2="50" y2="98" stroke="#333" strokeWidth="2" />
                 <line x1="2" y1="50" x2="10" y2="50" stroke="#333" strokeWidth="2" />
                 <line x1="90" y1="50" x2="98" y2="50" stroke="#333" strokeWidth="2" />
                 
-                {/* 45 Graus */}
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(45 50 50)" />
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(135 50 50)" />
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(225 50 50)" />
                 <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(315 50 50)" />
                 
-                {/* 22.5 Graus */}
                 {[22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5].map(deg => (
                   <line key={deg} x1="50" y1="2" x2="50" y2="6" stroke="#aaa" strokeWidth="1" transform={`rotate(${deg} 50 50)`} />
                 ))}
                 
-                {/* Letras */}
                 <text x="50" y="24" fontSize="16" textAnchor="middle" fill="#d32f2f" fontWeight="bold" fontFamily="Arial">N</text>
                 <text x="50" y="85" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">S</text>
                 <text x="82" y="55" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">E</text>
                 <text x="18" y="55" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">W</text>
               </svg>
               
-              {/* Agulha em SVG (Esta div que roda) */}
-              <div ref={compassWrapperRef} style={{ position: 'absolute', inset: 0, zIndex: 2, transform: 'rotate(130deg)', transition: 'transform 0.1s ease-out' }}>
+              {/* Agulha em SVG (Esta div que roda e o transform-origin garante que fica no centro) */}
+              <div ref={compassPointerRef} style={{ position: 'absolute', inset: 0, zIndex: 2, transform: 'rotate(130deg)', transformOrigin: 'center center', transition: 'transform 0.1s ease-out' }}>
                 <svg viewBox="0 0 100 100" width="100%" height="100%">
                   <polygon points="45,50 55,50 50,15" fill="#f44336" stroke="#b71c1c" strokeWidth="1" />
                   <polygon points="45,50 55,50 50,85" fill="#e0e0e0" stroke="#9e9e9e" strokeWidth="1" />
