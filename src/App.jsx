@@ -95,8 +95,7 @@ export default function App() {
   const areaList = Object.keys(activeAreas);
 
   const [selectedArea, setSelectedArea] = useState('');
-  const [areaIndex, setAreaIndex] = useState(0);
-  const [areaPointIndex, setAreaPointIndex] = useState(0);
+  // REMOVIDO areaPointIndex -> causava bug de volta ao início
   const [areaQueue, setAreaQueue] = useState([]);
 
   const normalizeStr = (s) => {
@@ -121,6 +120,7 @@ export default function App() {
     return parts.join(' ');
   };
 
+  // Monta a fila com a hierarquia correta: Limites -> Internos -> Referências
   const getSortedAreaIds = useCallback((areaName) => {
     const allNames = activeAreas[areaName] || [];
     const limitNames = (selectedSquadron === '1EIA' ? AREA_LIMITS[areaName] : []) || [];
@@ -153,32 +153,12 @@ export default function App() {
     return () => document.head.removeChild(link);
   }, []);
 
-  // CORREÇÃO: Lógica de troca de área imediata
+  // Mantém a áreaQueue sempre em dia SEM forçar resets invasivos
   useEffect(() => {
     if(selectedArea) {
-      const newQueue = getSortedAreaIds(selectedArea);
-      setAreaQueue(newQueue);
-      setAreaPointIndex(0);
-      
-      // Se estivermos ativamente no modo "Áreas", forçamos o pulo para o primeiro ponto da nova área selecionada.
-      if (areaMode && newQueue.length > 0 && map.current) {
-         let startP;
-         if (randomAreaSequence) {
-             const un = newQueue.filter(id => !guessed.includes(id));
-             startP = activePointsData.find(pt => pt.id === (un.length > 0 ? un[0] : newQueue[0]));
-         } else {
-             startP = activePointsData.find(pt => pt.id === newQueue[0]); 
-         }
-         
-         if (startP) {
-             setCurrentPoint(startP);
-             setAnswer('');
-             setFeedback(null);
-             map.current.flyTo({ center: startP.coords });
-         }
-      }
+      setAreaQueue(getSortedAreaIds(selectedArea));
     }
-  }, [selectedArea, getSortedAreaIds, areaMode, randomAreaSequence, guessed, activePointsData]);
+  }, [selectedArea, getSortedAreaIds]);
 
   useEffect(() => {
     if (!isMapLoaded || !map.current) return;
@@ -338,7 +318,7 @@ export default function App() {
             if (pitchInputRef.current) pitchInputRef.current.value = p;
             if (bearingInputRef.current) bearingInputRef.current.value = b;
             
-            // CORREÇÃO DA BÚSSOLA: Aplica a rotação apenas na agulha e assegura que ela fica fixa no centro
+            // Bússola perfeita e imóvel (só o rotor de dentro gira)
             if (compassPointerRef.current) {
                 compassPointerRef.current.style.transform = `rotate(${b}deg)`;
             }
@@ -444,10 +424,11 @@ export default function App() {
   const adjustBearing = (val) => { const b = (Number(val) + 360) % 360; if (map.current) map.current.setBearing(b - MAP_DECLINATION); };
   
   const startManualMode = () => { setAreaMode(false); setRandomMode(false); };
+  
   const startAreaMode = () => {
     setAreaMode(true); setRandomMode(false);
     const ids = getSortedAreaIds(selectedArea);
-    setAreaQueue(ids); setAreaPointIndex(0);
+    setAreaQueue(ids);
     if (ids.length) { 
         let startP = activePointsData.find(pt => pt.id === (randomAreaSequence ? ids.filter(id => !guessed.includes(id))[0] : ids[0]));
         if (startP) { setCurrentPoint(startP); if (map.current) map.current.flyTo({ center: startP.coords }); }
@@ -465,6 +446,7 @@ export default function App() {
   
   const handleCompletion = () => { setFinalTime(elapsedTime); setShowCompletion(true); };
 
+  // Pula para o ponto seguindo o indexOf da fila oficial (evita regressão)
   const moveToPoint = (direction) => {
       if (!currentPoint) return;
       let targetPoint = null;
@@ -479,7 +461,6 @@ export default function App() {
               const newIdx = direction === 'next' ? idx + 1 : idx - 1;
               if (newIdx >= 0 && newIdx < areaQueue.length) {
                   targetPoint = activePointsData.find(p => p.id === areaQueue[newIdx]);
-                  setAreaPointIndex(newIdx);
               }
           }
       } else {
@@ -515,17 +496,28 @@ export default function App() {
                 }
             }
         } else {
-            const nextIdx = areaPointIndex + 1;
-            if (nextIdx < areaQueue.length) { setAreaPointIndex(nextIdx); nextPoint = activePointsData.find(p => p.id === areaQueue[nextIdx]); }
+            // Busca o próximo elemento na fila, usando o índice do elemento atual
+            const idx = areaQueue.indexOf(currentPoint.id);
+            const nextIdx = idx + 1;
+            if (nextIdx < areaQueue.length) {
+                nextPoint = activePointsData.find(p => p.id === areaQueue[nextIdx]); 
+            }
         }
 
         if (nextPoint) {
              setCurrentPoint(nextPoint); setAnswer(''); if (map.current) map.current.flyTo({ center: nextPoint.coords });
         } else {
+             // Área finalizada. Avança para a próxima área automaticamente.
              const nextAreaIdx = (areaList.indexOf(selectedArea) + 1) % areaList.length;
-             setAreaIndex(nextAreaIdx); setSelectedArea(areaList[nextAreaIdx]); 
+             const nextAreaName = areaList[nextAreaIdx];
+             setSelectedArea(nextAreaName); 
              
-             // NOTA: Como selecionou uma nova área, o useEffect fará a gestão para saltar para o primeiro ponto
+             const nextIds = getSortedAreaIds(nextAreaName);
+             const avail = nextIds; 
+             if (avail.length) {
+                 const firstPoint = activePointsData.find(p => p.id === (randomAreaSequence ? avail.filter(id => !updated.includes(id))[0] || avail[0] : avail[0]));
+                 setCurrentPoint(firstPoint || null); setAnswer(''); if (map.current && firstPoint) map.current.flyTo({ center: firstPoint.coords });
+             } else { handleCompletion(); setCurrentPoint(null); }
         }
       } else if (randomMode) {
         const rem = activePointsData.filter(p => !updated.includes(p.id) && p.type !== 'reference'); 
@@ -589,7 +581,6 @@ export default function App() {
           </div>
       )}
 
-      {/* TELA DE INTRODUÇÃO E IMAGENS */}
       {showIntro && !mapError && (
         <div style={{ position: 'absolute', inset: 0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
           <div style={{ background:'white', padding:'30px 20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
@@ -610,7 +601,6 @@ export default function App() {
                 <button onClick={() => { setShowIntro(false); setStartTime(Date.now()); }} style={{ padding:'10px 20px', background:'#4caf50', color:'white', borderRadius:6, border:'none', cursor: 'pointer', fontWeight: 'bold' }}>Começar</button>
             </div>
 
-            {/* Imagens Menores e Discretas no Rodapé */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '40px', opacity: 0.35 }}>
               <div style={{ width: '55px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <img src="athos.png" alt="23/021" style={{ maxWidth: '100%', height: '35px', width: 'auto', objectFit: 'contain' }} />
@@ -630,7 +620,6 @@ export default function App() {
         </div>
       )}
 
-      {/* O MAPA */}
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
       {!mapError && !showIntro && (
@@ -645,7 +634,6 @@ export default function App() {
           <div className="compass-container" style={{ minWidth: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' }}>
             <div className="compass-circle" style={{ width: 60, height: 60, border: 'none', background: 'rgba(255,255,255,0.9)', borderRadius: '50%', position: 'relative', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}>
               
-              {/* Fundo da bússola em SVG (Traços e Letras - Não rodam) */}
               <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
                 <line x1="50" y1="2" x2="50" y2="10" stroke="#333" strokeWidth="2" />
                 <line x1="50" y1="90" x2="50" y2="98" stroke="#333" strokeWidth="2" />
@@ -667,7 +655,6 @@ export default function App() {
                 <text x="18" y="55" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">W</text>
               </svg>
               
-              {/* Agulha em SVG (Esta div que roda e o transform-origin garante que fica no centro) */}
               <div ref={compassPointerRef} style={{ position: 'absolute', inset: 0, zIndex: 2, transform: 'rotate(130deg)', transformOrigin: 'center center', transition: 'transform 0.1s ease-out' }}>
                 <svg viewBox="0 0 100 100" width="100%" height="100%">
                   <polygon points="45,50 55,50 50,15" fill="#f44336" stroke="#b71c1c" strokeWidth="1" />
@@ -714,7 +701,35 @@ export default function App() {
             <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink: 0 }}>
                 <div onClick={() => areaMode ? startManualMode() : startAreaMode()} className={`toggle-btn ${areaMode ? 'active' : 'inactive'}`}><b>Áreas</b></div>
                 {areaMode && <label style={{ display:'flex', alignItems:'center', gap:4, fontSize: 12, cursor:'pointer' }}><input type="checkbox" checked={randomAreaSequence} onChange={(e) => setRandomAreaSequence(e.target.checked)} />Seq. Aleatória</label>}
-                <select value={selectedArea} onChange={(e)=> setSelectedArea(e.target.value)} style={{ padding:'6px', borderRadius:4, maxWidth: '120px' }}>{areaList.map(a => <option key={a} value={a}>{a}</option>)}</select>
+                
+                {/* Lógica do Dropdown (Muda a área E O PONTO simultaneamente) */}
+                <select 
+                    value={selectedArea} 
+                    onChange={(e)=> {
+                        const newArea = e.target.value;
+                        setSelectedArea(newArea);
+                        if (areaMode) {
+                            const newQueue = getSortedAreaIds(newArea);
+                            if (newQueue.length > 0) {
+                                let startP;
+                                if (randomAreaSequence) {
+                                    const un = newQueue.filter(id => !guessed.includes(id));
+                                    startP = activePointsData.find(pt => pt.id === (un.length > 0 ? un[0] : newQueue[0]));
+                                } else {
+                                    startP = activePointsData.find(pt => pt.id === newQueue[0]);
+                                }
+                                if (startP) {
+                                    setCurrentPoint(startP);
+                                    setAnswer('');
+                                    setFeedback(null);
+                                    if (map.current) map.current.flyTo({ center: startP.coords });
+                                }
+                            }
+                        }
+                    }} 
+                    style={{ padding:'6px', borderRadius:4, maxWidth: '120px' }}>
+                    {areaList.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
             </div>
             <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, cursor:'pointer', borderLeft: '1px solid #ddd', paddingLeft: 10 }}><input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} /><b>Às Cegas</b></label>
             <button onClick={() => setHintTrigger(p => p + 1)} style={{ opacity: blindMode ? 1 : 0, pointerEvents: blindMode ? 'auto' : 'none', padding: '6px 12px', borderRadius: 4, border: '1px solid #2196f3', backgroundColor: '#e3f2fd', color: '#1976d2', cursor: 'pointer', fontWeight: 'bold', fontSize: 12 }}>Dica</button>
