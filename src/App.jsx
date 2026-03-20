@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import { pointsData } from "./points"; 
-import { points2EIA, AREAS_2EIA, LIMITS_2EIA_GEOJSON } from "./points2EIA";
+import { points2EIA, AREAS_2EIA, AREA_LIMITS_2EIA } from "./points2EIA";
 import './App.css';
 
 const API_KEYS = ["YHlTRP429Wo5PZXGJklr", "YS0YNd7SKoqGfXhdY8Bx", "R13imFP2SenJH9JsgVkN"];
@@ -50,7 +50,7 @@ const STATIC_ROUTES = {
 
 const getAreaColor = (areaName) => {
   if (areaName.includes('W')) return '#9c27b0';
-  if (areaName.includes('Alta')) return '#f44336';
+  if (areaName.includes('Alta') || ['Libra', 'Virgem', 'Gêmeos'].includes(areaName)) return '#f44336';
   return '#2196f3';
 };
 
@@ -92,6 +92,7 @@ export default function App() {
   
   const activePointsData = (selectedSquadron === '1EIA' ? pointsData : points2EIA) || [];
   const activeAreas = (selectedSquadron === '1EIA' ? AREAS : AREAS_2EIA) || {};
+  const activeAreaLimits = (selectedSquadron === '1EIA' ? AREA_LIMITS : AREA_LIMITS_2EIA) || {};
   const areaList = Object.keys(activeAreas);
 
   const [selectedArea, setSelectedArea] = useState('');
@@ -119,10 +120,9 @@ export default function App() {
     return parts.join(' ');
   };
 
-  // Monta a fila com a hierarquia correta: Limites -> Internos -> Referências
   const getSortedAreaIds = useCallback((areaName) => {
     const allNames = activeAreas[areaName] || [];
-    const limitNames = (selectedSquadron === '1EIA' ? AREA_LIMITS[areaName] : []) || [];
+    const limitNames = activeAreaLimits[areaName] || [];
     
     const limitIds = limitNames.map(n => nameToPointId(n)).filter(Boolean);
     const allIds = allNames.map(n => nameToPointId(n)).filter(Boolean);
@@ -142,7 +142,7 @@ export default function App() {
     });
 
     return [...limitIds, ...internalIds, ...referenceIds];
-  }, [nameToPointId, activeAreas, selectedSquadron, activePointsData]);
+  }, [nameToPointId, activeAreas, activeAreaLimits, activePointsData]);
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -152,7 +152,6 @@ export default function App() {
     return () => document.head.removeChild(link);
   }, []);
 
-  // Só inicializa a área na montagem e troca de esquadrão, sem loops de render
   useEffect(() => {
     if(selectedArea) {
       setAreaQueue(getSortedAreaIds(selectedArea));
@@ -170,34 +169,35 @@ export default function App() {
     return () => clearInterval(id); 
   }, [startTime, selectedSquadron, showIntro]);
 
-  // Atualização de Limites Geográficos
+  // Atualização Universal de Limites Geográficos (Serve para 1EIA e 2EIA)
   useEffect(() => {
     if (!isMapLoaded || !map.current || !selectedSquadron) return;
 
-    if (selectedSquadron === '1EIA') {
-        Object.entries(AREA_LIMITS).forEach(([areaName, limitNames]) => {
-            const source = map.current.getSource(`source-${areaName}`);
-            if (!source) return;
-            const limitIds = limitNames.map(name => nameToPointId(name)).filter(Boolean);
-            if (limitIds.length < 2) { source.setData({ type: 'FeatureCollection', features: [] }); return; }
+    Object.entries(activeAreaLimits).forEach(([areaName, limitNames]) => {
+        const source = map.current.getSource(`source-${areaName}`);
+        if (!source) return;
+        const limitIds = limitNames.map(name => nameToPointId(name)).filter(Boolean);
+        if (limitIds.length < 2) { source.setData({ type: 'FeatureCollection', features: [] }); return; }
 
-            const features = [];
-            for (let i = 0; i < limitIds.length; i++) {
-                const id1 = limitIds[i]; const id2 = limitIds[(i + 1) % limitIds.length];
-                const p1 = activePointsData.find(p => p.id === id1); const p2 = activePointsData.find(p => p.id === id2);
+        const features = [];
+        for (let i = 0; i < limitIds.length; i++) {
+            const id1 = limitIds[i]; const id2 = limitIds[(i + 1) % limitIds.length];
+            const p1 = activePointsData.find(p => p.id === id1); const p2 = activePointsData.find(p => p.id === id2);
 
-                if (p1 && p2) {
-                    let isVisible = boundaryMode === 'all' || (boundaryMode === 'progressive' && guessed.includes(id1) && guessed.includes(id2));
-                    if (isVisible) {
-                        const routeKey = `${id1}-${id2}`; const reverseRouteKey = `${id2}-${id1}`;
-                        let geometryCoordinates = STATIC_ROUTES[routeKey] || (STATIC_ROUTES[reverseRouteKey] ? [...STATIC_ROUTES[reverseRouteKey]].reverse() : [p1.coords, p2.coords]);
-                        features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: geometryCoordinates } });
-                    }
+            if (p1 && p2) {
+                let isVisible = boundaryMode === 'all' || (boundaryMode === 'progressive' && guessed.includes(id1) && guessed.includes(id2));
+                if (isVisible) {
+                    const routeKey = `${id1}-${id2}`; const reverseRouteKey = `${id2}-${id1}`;
+                    let geometryCoordinates = STATIC_ROUTES[routeKey] || (STATIC_ROUTES[reverseRouteKey] ? [...STATIC_ROUTES[reverseRouteKey]].reverse() : [p1.coords, p2.coords]);
+                    features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: geometryCoordinates } });
                 }
             }
-            source.setData({ 'type': 'FeatureCollection', 'features': features });
-        });
+        }
+        source.setData({ 'type': 'FeatureCollection', 'features': features });
+    });
 
+    // Linha vermelha extra do 1EIA
+    if (selectedSquadron === '1EIA') {
         const extraSource = map.current.getSource('source-extra-red');
         if (extraSource) {
             const p1 = activePointsData.find(p => p.id === 63); 
@@ -208,19 +208,8 @@ export default function App() {
             }
             extraSource.setData({ 'type': 'FeatureCollection', 'features': features });
         }
-    } else if (selectedSquadron === '2EIA') {
-        const source2eia = map.current.getSource('source-2eia-limits');
-        if (source2eia) {
-            let features = [];
-            if (boundaryMode !== 'none') {
-                 LIMITS_2EIA_GEOJSON.forEach(coords => {
-                     features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
-                 });
-            }
-            source2eia.setData({ 'type': 'FeatureCollection', 'features': features });
-        }
     }
-  }, [isMapLoaded, guessed, boundaryMode, nameToPointId, selectedSquadron, activePointsData]);
+  }, [isMapLoaded, guessed, boundaryMode, nameToPointId, selectedSquadron, activePointsData, activeAreaLimits]);
 
   // Inicialização do Mapa
   useEffect(() => {
@@ -249,27 +238,22 @@ export default function App() {
         map.current.on('load', () => {
           map.current.addSource('terrain', { "type": "raster-dem", "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${activeKey}`, "tileSize": 512 });
 
-          if (selectedSquadron === '1EIA') {
-              Object.keys(AREA_LIMITS).forEach(areaName => {
-                  map.current.addSource(`source-${areaName}`, { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
-                  map.current.addLayer({
-                    'id': `layer-${areaName}`, 'type': 'line', 'source': `source-${areaName}`,
-                    'layout': { 'line-join': 'round', 'line-cap': 'round' },
-                    'paint': { 'line-color': getAreaColor(areaName), 'line-width': 3, 'line-opacity': 0.6 }
-                  });
+          // Renderização Universal de Áreas
+          Object.keys(activeAreaLimits).forEach(areaName => {
+              map.current.addSource(`source-${areaName}`, { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
+              map.current.addLayer({
+                'id': `layer-${areaName}`, 'type': 'line', 'source': `source-${areaName}`,
+                'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                'paint': { 'line-color': getAreaColor(areaName), 'line-width': 3, 'line-opacity': 0.6 }
               });
+          });
+
+          if (selectedSquadron === '1EIA') {
               map.current.addSource('source-extra-red', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
               map.current.addLayer({
                 'id': 'layer-extra-red', 'type': 'line', 'source': 'source-extra-red',
                 'layout': { 'line-join': 'round', 'line-cap': 'round' },
                 'paint': { 'line-color': '#f44336', 'line-width': 3, 'line-opacity': 0.6 }
-              });
-          } else if (selectedSquadron === '2EIA') {
-              map.current.addSource('source-2eia-limits', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
-              map.current.addLayer({
-                'id': 'layer-2eia-limits', 'type': 'line', 'source': 'source-2eia-limits',
-                'layout': { 'line-join': 'round', 'line-cap': 'round' },
-                'paint': { 'line-color': '#d32f2f', 'line-width': 3, 'line-opacity': 0.8 }
               });
           }
 
@@ -317,7 +301,6 @@ export default function App() {
             if (pitchInputRef.current) pitchInputRef.current.value = p;
             if (bearingInputRef.current) bearingInputRef.current.value = b;
             
-            // Aqui, a bússola SVG inteira gira em sentido oposto ao movimento do mapa para manter Norte apontando pro Norte
             if (compassPointerRef.current) {
                 compassPointerRef.current.style.transform = `rotate(${-b}deg)`;
             }
@@ -334,7 +317,7 @@ export default function App() {
       if (map.current) map.current.remove();
       map.current = null;
     };
-  }, [currentKeyIndex, activeKey, selectedSquadron, activePointsData]);
+  }, [currentKeyIndex, activeKey, selectedSquadron, activePointsData, activeAreaLimits]);
 
   // Atualização Visual Dinâmica dos Pontos
   useEffect(() => {
@@ -494,7 +477,6 @@ export default function App() {
                 }
             }
         } else {
-            // Baseado no índice real do ponto na fila para não perder o lugar
             const idx = areaQueue.indexOf(currentPoint.id);
             const nextIdx = idx + 1;
             if (nextIdx < areaQueue.length) {
@@ -579,6 +561,7 @@ export default function App() {
           </div>
       )}
 
+      {/* TELA DE INTRODUÇÃO E IMAGENS */}
       {showIntro && !mapError && (
         <div style={{ position: 'absolute', inset: 0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
           <div style={{ background:'white', padding:'30px 20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
@@ -751,7 +734,7 @@ export default function App() {
 
             <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto' }}>Recomeçar</button>
             <div style={{ minWidth:180, marginLeft: 10 }}>
-              <select style={{ width:'100%', padding:6, borderRadius:4 }} onChange={(e)=>{ const pt=activePointsData.find(p=>p.id===Number(e.target.value)); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }} value="">
+              <select style={{ width:'100%', padding:6, borderRadius:4 }} onChange={(e)=>{ const pt=activePointsData.find(p=>p.id===Number(e.target.value) || p.id===e.target.value); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }} value="">
                 <option value="">-- Ir para ponto --</option>
                 {!areaMode ? (
                   <>
@@ -762,12 +745,12 @@ export default function App() {
                   <>
                     {Object.entries(activeAreas).map(([areaName, areaPointsNames]) => {
                         const areaPointsIds = areaPointsNames.map(n => nameToPointId(n)).filter(Boolean);
-                        const areaMissing = areaPointsIds.filter(id => !guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a).name.localeCompare(activePointsData.find(p=>p.id===b).name));
-                        const areaGuessed = areaPointsIds.filter(id => guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a).name.localeCompare(activePointsData.find(p=>p.id===b).name));
+                        const areaMissing = areaPointsIds.filter(id => !guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a)?.name.localeCompare(activePointsData.find(p=>p.id===b)?.name));
+                        const areaGuessed = areaPointsIds.filter(id => guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a)?.name.localeCompare(activePointsData.find(p=>p.id===b)?.name));
                         return (
                             <optgroup key={areaName} label={areaName}>
-                                {areaMissing.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id).name}</option>)}
-                                {areaGuessed.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id).name} ✅</option>)}
+                                {areaMissing.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id)?.name}</option>)}
+                                {areaGuessed.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id)?.name} ✅</option>)}
                             </optgroup>
                         );
                     })}
