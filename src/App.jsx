@@ -95,7 +95,6 @@ export default function App() {
   const areaList = Object.keys(activeAreas);
 
   const [selectedArea, setSelectedArea] = useState('');
-  // REMOVIDO areaPointIndex -> causava bug de volta ao início
   const [areaQueue, setAreaQueue] = useState([]);
 
   const normalizeStr = (s) => {
@@ -153,7 +152,7 @@ export default function App() {
     return () => document.head.removeChild(link);
   }, []);
 
-  // Mantém a áreaQueue sempre em dia SEM forçar resets invasivos
+  // Só inicializa a área na montagem e troca de esquadrão, sem loops de render
   useEffect(() => {
     if(selectedArea) {
       setAreaQueue(getSortedAreaIds(selectedArea));
@@ -318,9 +317,9 @@ export default function App() {
             if (pitchInputRef.current) pitchInputRef.current.value = p;
             if (bearingInputRef.current) bearingInputRef.current.value = b;
             
-            // Bússola perfeita e imóvel (só o rotor de dentro gira)
+            // Aqui, a bússola SVG inteira gira em sentido oposto ao movimento do mapa para manter Norte apontando pro Norte
             if (compassPointerRef.current) {
-                compassPointerRef.current.style.transform = `rotate(${b}deg)`;
+                compassPointerRef.current.style.transform = `rotate(${-b}deg)`;
             }
             if (bearingTextRef.current) bearingTextRef.current.innerText = `${b}°`;
           });
@@ -412,7 +411,7 @@ export default function App() {
       setStartTime(Date.now()); setFinalTime(0); setShowCompletion(false); setShowKey(false); 
       if (map.current) {
           map.current.flyTo({ center: INITIAL_CENTER, zoom: 8.5, pitch: 60, bearing: 130 - MAP_DECLINATION }); 
-          if (compassPointerRef.current) compassPointerRef.current.style.transform = `rotate(130deg)`;
+          if (compassPointerRef.current) compassPointerRef.current.style.transform = `rotate(-130deg)`;
           if (bearingTextRef.current) bearingTextRef.current.innerText = `130°`;
           if (pitchInputRef.current) pitchInputRef.current.value = 60;
           if (bearingInputRef.current) bearingInputRef.current.value = 130;
@@ -446,7 +445,6 @@ export default function App() {
   
   const handleCompletion = () => { setFinalTime(elapsedTime); setShowCompletion(true); };
 
-  // Pula para o ponto seguindo o indexOf da fila oficial (evita regressão)
   const moveToPoint = (direction) => {
       if (!currentPoint) return;
       let targetPoint = null;
@@ -496,7 +494,7 @@ export default function App() {
                 }
             }
         } else {
-            // Busca o próximo elemento na fila, usando o índice do elemento atual
+            // Baseado no índice real do ponto na fila para não perder o lugar
             const idx = areaQueue.indexOf(currentPoint.id);
             const nextIdx = idx + 1;
             if (nextIdx < areaQueue.length) {
@@ -507,15 +505,15 @@ export default function App() {
         if (nextPoint) {
              setCurrentPoint(nextPoint); setAnswer(''); if (map.current) map.current.flyTo({ center: nextPoint.coords });
         } else {
-             // Área finalizada. Avança para a próxima área automaticamente.
              const nextAreaIdx = (areaList.indexOf(selectedArea) + 1) % areaList.length;
              const nextAreaName = areaList[nextAreaIdx];
              setSelectedArea(nextAreaName); 
              
              const nextIds = getSortedAreaIds(nextAreaName);
-             const avail = nextIds; 
-             if (avail.length) {
-                 const firstPoint = activePointsData.find(p => p.id === (randomAreaSequence ? avail.filter(id => !updated.includes(id))[0] || avail[0] : avail[0]));
+             setAreaQueue(nextIds);
+             
+             if (nextIds.length) {
+                 const firstPoint = activePointsData.find(p => p.id === (randomAreaSequence ? nextIds.filter(id => !updated.includes(id))[0] || nextIds[0] : nextIds[0]));
                  setCurrentPoint(firstPoint || null); setAnswer(''); if (map.current && firstPoint) map.current.flyTo({ center: firstPoint.coords });
              } else { handleCompletion(); setCurrentPoint(null); }
         }
@@ -632,35 +630,40 @@ export default function App() {
           </div>
 
           <div className="compass-container" style={{ minWidth: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' }}>
-            <div className="compass-circle" style={{ width: 60, height: 60, border: 'none', background: 'rgba(255,255,255,0.9)', borderRadius: '50%', position: 'relative', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}>
+            <div className="compass-circle" style={{ width: 60, height: 60, border: '2px solid rgba(0,0,0,0.2)', background: 'rgba(255,255,255,0.9)', borderRadius: '50%', position: 'relative', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}>
               
-              <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-                <line x1="50" y1="2" x2="50" y2="10" stroke="#333" strokeWidth="2" />
-                <line x1="50" y1="90" x2="50" y2="98" stroke="#333" strokeWidth="2" />
-                <line x1="2" y1="50" x2="10" y2="50" stroke="#333" strokeWidth="2" />
-                <line x1="90" y1="50" x2="98" y2="50" stroke="#333" strokeWidth="2" />
-                
-                <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(45 50 50)" />
-                <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(135 50 50)" />
-                <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(225 50 50)" />
-                <line x1="50" y1="2" x2="50" y2="8" stroke="#666" strokeWidth="1.5" transform="rotate(315 50 50)" />
-                
-                {[22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5].map(deg => (
-                  <line key={deg} x1="50" y1="2" x2="50" y2="6" stroke="#aaa" strokeWidth="1" transform={`rotate(${deg} 50 50)`} />
-                ))}
-                
-                <text x="50" y="24" fontSize="16" textAnchor="middle" fill="#d32f2f" fontWeight="bold" fontFamily="Arial">N</text>
-                <text x="50" y="85" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">S</text>
-                <text x="82" y="55" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">E</text>
-                <text x="18" y="55" fontSize="14" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">W</text>
-              </svg>
+              {/* Lubber Line - Linha Laranja Fixa no Topo */}
+              <div style={{ position: 'absolute', top: -2, left: 'calc(50% - 2px)', width: 4, height: 8, background: '#ff9800', zIndex: 10, borderRadius: 2 }} />
               
-              <div ref={compassPointerRef} style={{ position: 'absolute', inset: 0, zIndex: 2, transform: 'rotate(130deg)', transformOrigin: 'center center', transition: 'transform 0.1s ease-out' }}>
+              {/* O Grupo SVG Inteiro (Fundo + Letras + Agulha) roda junto */}
+              <div ref={compassPointerRef} style={{ position: 'absolute', inset: 0, zIndex: 2, transform: 'rotate(-130deg)', transformOrigin: 'center center', transition: 'transform 0.1s ease-out' }}>
                 <svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <polygon points="45,50 55,50 50,15" fill="#f44336" stroke="#b71c1c" strokeWidth="1" />
-                  <polygon points="45,50 55,50 50,85" fill="#e0e0e0" stroke="#9e9e9e" strokeWidth="1" />
-                  <circle cx="50" cy="50" r="5" fill="#333" />
-                  <circle cx="50" cy="50" r="2" fill="white" />
+                  {/* Tracinhos Cardeais e Ordinais */}
+                  <line x1="50" y1="6" x2="50" y2="12" stroke="#333" strokeWidth="2" />
+                  <line x1="50" y1="88" x2="50" y2="94" stroke="#333" strokeWidth="2" />
+                  <line x1="6" y1="50" x2="12" y2="50" stroke="#333" strokeWidth="2" />
+                  <line x1="88" y1="50" x2="94" y2="50" stroke="#333" strokeWidth="2" />
+                  
+                  <line x1="50" y1="6" x2="50" y2="10" stroke="#666" strokeWidth="1.5" transform="rotate(45 50 50)" />
+                  <line x1="50" y1="6" x2="50" y2="10" stroke="#666" strokeWidth="1.5" transform="rotate(135 50 50)" />
+                  <line x1="50" y1="6" x2="50" y2="10" stroke="#666" strokeWidth="1.5" transform="rotate(225 50 50)" />
+                  <line x1="50" y1="6" x2="50" y2="10" stroke="#666" strokeWidth="1.5" transform="rotate(315 50 50)" />
+                  
+                  {[22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5].map(deg => (
+                    <line key={deg} x1="50" y1="6" x2="50" y2="9" stroke="#aaa" strokeWidth="1" transform={`rotate(${deg} 50 50)`} />
+                  ))}
+                  
+                  {/* Letras N, S, E, W */}
+                  <text x="50" y="24" fontSize="14" textAnchor="middle" fill="#d32f2f" fontWeight="bold" fontFamily="Arial">N</text>
+                  <text x="50" y="85" fontSize="12" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">S</text>
+                  <text x="82" y="54" fontSize="12" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">E</text>
+                  <text x="18" y="54" fontSize="12" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">W</text>
+
+                  {/* Agulha apontando para o N do próprio SVG */}
+                  <polygon points="46,50 54,50 50,28" fill="#f44336" stroke="#b71c1c" strokeWidth="1" />
+                  <polygon points="46,50 54,50 50,72" fill="#e0e0e0" stroke="#9e9e9e" strokeWidth="1" />
+                  <circle cx="50" cy="50" r="4" fill="#333" />
+                  <circle cx="50" cy="50" r="1.5" fill="white" />
                 </svg>
               </div>
             </div>
@@ -702,14 +705,17 @@ export default function App() {
                 <div onClick={() => areaMode ? startManualMode() : startAreaMode()} className={`toggle-btn ${areaMode ? 'active' : 'inactive'}`}><b>Áreas</b></div>
                 {areaMode && <label style={{ display:'flex', alignItems:'center', gap:4, fontSize: 12, cursor:'pointer' }}><input type="checkbox" checked={randomAreaSequence} onChange={(e) => setRandomAreaSequence(e.target.checked)} />Seq. Aleatória</label>}
                 
-                {/* Lógica do Dropdown (Muda a área E O PONTO simultaneamente) */}
+                {/* Lógica Dropdown Corrigida */}
                 <select 
                     value={selectedArea} 
                     onChange={(e)=> {
                         const newArea = e.target.value;
                         setSelectedArea(newArea);
+                        
+                        const newQueue = getSortedAreaIds(newArea);
+                        setAreaQueue(newQueue);
+
                         if (areaMode) {
-                            const newQueue = getSortedAreaIds(newArea);
                             if (newQueue.length > 0) {
                                 let startP;
                                 if (randomAreaSequence) {
