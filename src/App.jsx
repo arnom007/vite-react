@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import { pointsData } from "./points"; 
-import { points2EIA, AREAS_2EIA, AREA_LIMITS_2EIA } from "./points2EIA";
+import { points2EIA, AREAS_2EIA, LIMITS_2EIA_GEOJSON } from "./points2EIA";
 import './App.css';
 
 const API_KEYS = ["YHlTRP429Wo5PZXGJklr", "YS0YNd7SKoqGfXhdY8Bx", "R13imFP2SenJH9JsgVkN"];
@@ -47,6 +47,22 @@ const AREA_LIMITS = {
 const STATIC_ROUTES = { 
   '30-52': [[-47.4721, -21.8490], [-47.4824, -21.8350], [-47.4851, -21.8317], [-47.4863, -21.8300], [-47.4876, -21.8282], [-47.4882, -21.8274], [-47.4890, -21.8265], [-47.4897, -21.8257], [-47.4903, -21.8248], [-47.4910, -21.8239], [-47.4918, -21.8231], [-47.4924, -21.8225], [-47.4929, -21.8216], [-47.4933, -21.8211], [-47.4937, -21.8205], [-47.4946, -21.8196], [-47.4956, -21.8187], [-47.4965, -21.8178], [-47.4967, -21.8174], [-47.4970, -21.8168], [-47.4973, -21.8158], [-47.4976, -21.8138], [-47.5017, -21.8066], [-47.5071, -21.8001], [-47.5145, -21.7944], [-47.5705, -21.7509], [-47.5817, -21.7389], [-47.5882, -21.7228], [-47.5989, -21.6928], [-47.6043, -21.6777], [-47.6071, -21.6700], [-47.6084, -21.6622], [-47.6108, -21.6463], [-47.6136, -21.6308], [-47.6155, -21.6199], [-47.6163, -21.6133], [-47.6181, -21.6088], [-47.6284, -21.5785], [-47.6380, -21.5516], [-47.6425, -21.5245], [-47.6398, -21.4714], [-47.6495, -21.4424], [-47.6543, -21.4273], [-47.6643, -21.4144]]
 };
+
+// Coordenadas do Polígono "Portal"
+const PORTAL_POLYGON = [
+  [
+    [-47.16914347914692, -21.99297174739045],
+    [-47.16870416218156, -22.00160035264108],
+    [-47.16826484521619, -22.01022895789171],
+    [-47.13148231484859, -22.01195918773471],
+    [-47.10240314608033, -21.98439323601293],
+    [-47.10038336233617, -21.97945155992694],
+    [-47.1040661233358, -21.96891946073817],
+    [-47.10827258413079, -21.95787903478974],
+    [-47.11930404088337, -21.94807397207867],
+    [-47.16914347914692, -21.99297174739045]
+  ]
+];
 
 const getAreaColor = (areaName) => {
   if (areaName.includes('W')) return '#9c27b0';
@@ -169,7 +185,7 @@ export default function App() {
     return () => clearInterval(id); 
   }, [startTime, selectedSquadron, showIntro]);
 
-  // Atualização Universal de Limites Geográficos (Serve para 1EIA e 2EIA)
+  // Atualização Universal de Limites Geográficos e Portal
   useEffect(() => {
     if (!isMapLoaded || !map.current || !selectedSquadron) return;
 
@@ -209,6 +225,34 @@ export default function App() {
             extraSource.setData({ 'type': 'FeatureCollection', 'features': features });
         }
     }
+
+    // LÓGICA DO POLÍGONO DO PORTAL
+    const sourcePortal = map.current.getSource('source-portal');
+    if (sourcePortal) {
+        // Nomes dos pontos necessários para desbloquear a área
+        const reqNames = ['Venda Branca', 'Ponte sobre o Rio Jaguari Mirim', 'Trevo da estrada de Aguaí', 'Vírgula', 'Areal'];
+        // Busca os IDs reais baseados nos nomes
+        const portalReqIds = reqNames.map(name => nameToPointId(name)).filter(Boolean);
+        
+        // Verifica se todos foram encontrados e se todos estão na lista "guessed" (adivinhados)
+        const showPortal = portalReqIds.length === 5 && portalReqIds.every(id => guessed.includes(id));
+        
+        if (showPortal) {
+            sourcePortal.setData({
+                type: 'FeatureCollection',
+                features: [{
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: PORTAL_POLYGON
+                    }
+                }]
+            });
+        } else {
+            sourcePortal.setData({ type: 'FeatureCollection', features: [] });
+        }
+    }
+
   }, [isMapLoaded, guessed, boundaryMode, nameToPointId, selectedSquadron, activePointsData, activeAreaLimits]);
 
   // Inicialização do Mapa
@@ -248,12 +292,31 @@ export default function App() {
               });
           });
 
+          // Camada do Polígono do Portal
+          map.current.addSource('source-portal', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
+          map.current.addLayer({
+            'id': 'layer-portal-fill', 'type': 'fill', 'source': 'source-portal',
+            'paint': { 'fill-color': '#007cf5', 'fill-opacity': 0.25 }
+          });
+          map.current.addLayer({
+            'id': 'layer-portal-line', 'type': 'line', 'source': 'source-portal',
+            'paint': { 'line-color': '#007cf5', 'line-width': 2 }
+          });
+
+          // Camadas extras do 1EIA e 2EIA
           if (selectedSquadron === '1EIA') {
               map.current.addSource('source-extra-red', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
               map.current.addLayer({
                 'id': 'layer-extra-red', 'type': 'line', 'source': 'source-extra-red',
                 'layout': { 'line-join': 'round', 'line-cap': 'round' },
                 'paint': { 'line-color': '#f44336', 'line-width': 3, 'line-opacity': 0.6 }
+              });
+          } else if (selectedSquadron === '2EIA') {
+              map.current.addSource('source-2eia-limits', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
+              map.current.addLayer({
+                'id': 'layer-2eia-limits', 'type': 'line', 'source': 'source-2eia-limits',
+                'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                'paint': { 'line-color': '#d32f2f', 'line-width': 3, 'line-opacity': 0.8 }
               });
           }
 
@@ -317,7 +380,7 @@ export default function App() {
       if (map.current) map.current.remove();
       map.current = null;
     };
-  }, [currentKeyIndex, activeKey, selectedSquadron, activePointsData, activeAreaLimits]);
+  }, [currentKeyIndex, activeKey, selectedSquadron, activePointsData]);
 
   // Atualização Visual Dinâmica dos Pontos
   useEffect(() => {
@@ -561,7 +624,6 @@ export default function App() {
           </div>
       )}
 
-      {/* TELA DE INTRODUÇÃO E IMAGENS */}
       {showIntro && !mapError && (
         <div style={{ position: 'absolute', inset: 0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
           <div style={{ background:'white', padding:'30px 20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
@@ -618,10 +680,8 @@ export default function App() {
               {/* Lubber Line - Linha Laranja Fixa no Topo */}
               <div style={{ position: 'absolute', top: -2, left: 'calc(50% - 2px)', width: 4, height: 8, background: '#ff9800', zIndex: 10, borderRadius: 2 }} />
               
-              {/* O Grupo SVG Inteiro (Fundo + Letras + Agulha) roda junto */}
               <div ref={compassPointerRef} style={{ position: 'absolute', inset: 0, zIndex: 2, transform: 'rotate(-130deg)', transformOrigin: 'center center', transition: 'transform 0.1s ease-out' }}>
                 <svg viewBox="0 0 100 100" width="100%" height="100%">
-                  {/* Tracinhos Cardeais e Ordinais */}
                   <line x1="50" y1="6" x2="50" y2="12" stroke="#333" strokeWidth="2" />
                   <line x1="50" y1="88" x2="50" y2="94" stroke="#333" strokeWidth="2" />
                   <line x1="6" y1="50" x2="12" y2="50" stroke="#333" strokeWidth="2" />
@@ -636,13 +696,11 @@ export default function App() {
                     <line key={deg} x1="50" y1="6" x2="50" y2="9" stroke="#aaa" strokeWidth="1" transform={`rotate(${deg} 50 50)`} />
                   ))}
                   
-                  {/* Letras N, S, E, W */}
                   <text x="50" y="24" fontSize="14" textAnchor="middle" fill="#d32f2f" fontWeight="bold" fontFamily="Arial">N</text>
                   <text x="50" y="85" fontSize="12" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">S</text>
                   <text x="82" y="54" fontSize="12" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">E</text>
                   <text x="18" y="54" fontSize="12" textAnchor="middle" fill="#333" fontWeight="bold" fontFamily="Arial">W</text>
 
-                  {/* Agulha apontando para o N do próprio SVG */}
                   <polygon points="46,50 54,50 50,28" fill="#f44336" stroke="#b71c1c" strokeWidth="1" />
                   <polygon points="46,50 54,50 50,72" fill="#e0e0e0" stroke="#9e9e9e" strokeWidth="1" />
                   <circle cx="50" cy="50" r="4" fill="#333" />
@@ -688,7 +746,6 @@ export default function App() {
                 <div onClick={() => areaMode ? startManualMode() : startAreaMode()} className={`toggle-btn ${areaMode ? 'active' : 'inactive'}`}><b>Áreas</b></div>
                 {areaMode && <label style={{ display:'flex', alignItems:'center', gap:4, fontSize: 12, cursor:'pointer' }}><input type="checkbox" checked={randomAreaSequence} onChange={(e) => setRandomAreaSequence(e.target.checked)} />Seq. Aleatória</label>}
                 
-                {/* Lógica Dropdown Corrigida */}
                 <select 
                     value={selectedArea} 
                     onChange={(e)=> {
