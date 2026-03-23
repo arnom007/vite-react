@@ -48,7 +48,6 @@ const STATIC_ROUTES = {
   '30-52': [[-47.4721, -21.8490], [-47.4824, -21.8350], [-47.4851, -21.8317], [-47.4863, -21.8300], [-47.4876, -21.8282], [-47.4882, -21.8274], [-47.4890, -21.8265], [-47.4897, -21.8257], [-47.4903, -21.8248], [-47.4910, -21.8239], [-47.4918, -21.8231], [-47.4924, -21.8225], [-47.4929, -21.8216], [-47.4933, -21.8211], [-47.4937, -21.8205], [-47.4946, -21.8196], [-47.4956, -21.8187], [-47.4965, -21.8178], [-47.4967, -21.8174], [-47.4970, -21.8168], [-47.4973, -21.8158], [-47.4976, -21.8138], [-47.5017, -21.8066], [-47.5071, -21.8001], [-47.5145, -21.7944], [-47.5705, -21.7509], [-47.5817, -21.7389], [-47.5882, -21.7228], [-47.5989, -21.6928], [-47.6043, -21.6777], [-47.6071, -21.6700], [-47.6084, -21.6622], [-47.6108, -21.6463], [-47.6136, -21.6308], [-47.6155, -21.6199], [-47.6163, -21.6133], [-47.6181, -21.6088], [-47.6284, -21.5785], [-47.6380, -21.5516], [-47.6425, -21.5245], [-47.6398, -21.4714], [-47.6495, -21.4424], [-47.6543, -21.4273], [-47.6643, -21.4144]]
 };
 
-// Coordenadas do Polígono "Portal"
 const PORTAL_POLYGON = [
   [
     [-47.16914347914692, -21.99297174739045],
@@ -94,7 +93,6 @@ export default function App() {
   
   const [randomMode, setRandomMode] = useState(false);
   const [areaMode, setAreaMode] = useState(false);
-  const [randomAreaSequence, setRandomAreaSequence] = useState(false);
   const [blindMode, setBlindMode] = useState(false);
   const [showTerrain, setShowTerrain] = useState(false);
   const [boundaryMode, setBoundaryMode] = useState('progressive'); 
@@ -185,7 +183,6 @@ export default function App() {
     return () => clearInterval(id); 
   }, [startTime, selectedSquadron, showIntro]);
 
-  // Atualização Universal de Limites Geográficos e Portal
   useEffect(() => {
     if (!isMapLoaded || !map.current || !selectedSquadron) return;
 
@@ -212,7 +209,6 @@ export default function App() {
         source.setData({ 'type': 'FeatureCollection', 'features': features });
     });
 
-    // Linha vermelha extra do 1EIA
     if (selectedSquadron === '1EIA') {
         const extraSource = map.current.getSource('source-extra-red');
         if (extraSource) {
@@ -226,7 +222,6 @@ export default function App() {
         }
     }
 
-    // LÓGICA DO POLÍGONO DO PORTAL
     const sourcePortal = map.current.getSource('source-portal');
     if (sourcePortal) {
         const reqNames = ['Venda Branca', 'Ponte sobre o Rio Jaguari Mirim', 'Trevo da estrada de Aguaí', 'Vírgula', 'Areal'];
@@ -248,10 +243,8 @@ export default function App() {
             sourcePortal.setData({ type: 'FeatureCollection', features: [] });
         }
     }
-
   }, [isMapLoaded, guessed, boundaryMode, nameToPointId, selectedSquadron, activePointsData, activeAreaLimits]);
 
-  // Inicialização do Mapa
   useEffect(() => {
     if (mapError || !selectedSquadron) return; 
     if (map.current) { map.current.remove(); map.current = null; setIsMapLoaded(false); }
@@ -265,7 +258,7 @@ export default function App() {
           zoom: 8.5,
           pitch: 60,
           bearing: 130 - MAP_DECLINATION,
-          maxPitch: 85, 
+          maxPitch: 70, // Reduzido para evitar lag crítico com terreno 3D
         });
 
         map.current.on('error', (e) => {
@@ -278,7 +271,6 @@ export default function App() {
         map.current.on('load', () => {
           map.current.addSource('terrain', { "type": "raster-dem", "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${activeKey}`, "tileSize": 512 });
 
-          // Renderização Universal de Áreas
           Object.keys(activeAreaLimits).forEach(areaName => {
               map.current.addSource(`source-${areaName}`, { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
               map.current.addLayer({
@@ -288,7 +280,6 @@ export default function App() {
               });
           });
 
-          // Camada do Polígono do Portal
           map.current.addSource('source-portal', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
           map.current.addLayer({
             'id': 'layer-portal-fill', 'type': 'fill', 'source': 'source-portal',
@@ -299,7 +290,6 @@ export default function App() {
             'paint': { 'line-color': '#007cf5', 'line-width': 2 }
           });
 
-          // Camada extra do 1EIA
           if (selectedSquadron === '1EIA') {
               map.current.addSource('source-extra-red', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
               map.current.addLayer({
@@ -312,7 +302,8 @@ export default function App() {
           activePointsData.forEach(point => {
             const el = document.createElement('div');
             el.className = 'marker-root';
-            el.style.cssText = 'width:0px;height:0px;display:flex;align-items:center;justify-content:center;overflow:visible;';
+            // will-change otimiza a performance de marcadores do DOM
+            el.style.cssText = 'width:0px;height:0px;display:flex;align-items:center;justify-content:center;overflow:visible;will-change:transform;';
             
             const content = document.createElement('div');
             content.className = 'marker-content';
@@ -371,7 +362,6 @@ export default function App() {
     };
   }, [currentKeyIndex, activeKey, selectedSquadron, activePointsData, activeAreaLimits]);
 
-  // Atualização Visual Dinâmica dos Pontos
   useEffect(() => {
     if (!isMapLoaded) return;
     markersRef.current.forEach((rec, id) => {
@@ -464,7 +454,7 @@ export default function App() {
     const ids = getSortedAreaIds(selectedArea);
     setAreaQueue(ids);
     if (ids.length) { 
-        let startP = activePointsData.find(pt => pt.id === (randomAreaSequence ? ids.filter(id => !guessed.includes(id))[0] : ids[0]));
+        let startP = activePointsData.find(pt => pt.id === ids[0]);
         if (startP) { setCurrentPoint(startP); if (map.current) map.current.flyTo({ center: startP.coords }); }
     }
   };
@@ -472,7 +462,10 @@ export default function App() {
   const startRandomMode = () => {
     setRandomMode(true); setAreaMode(false);
     if (!currentPoint) {
-        const rem = activePointsData.filter(p => !guessed.includes(p.id) && p.type !== 'reference');
+        let rem = activePointsData.filter(p => !guessed.includes(p.id) && p.type !== 'reference');
+        if (rem.length === 0) {
+            rem = activePointsData.filter(p => !guessed.includes(p.id) && p.type === 'reference');
+        }
         const next = rem.length ? rem[Math.floor(Math.random() * rem.length)] : null;
         if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
     }
@@ -486,15 +479,10 @@ export default function App() {
       const sortedPoints = [...activePointsData].sort((a, b) => a.name.localeCompare(b.name));
 
       if (areaMode) {
-          if (randomAreaSequence && direction === 'next') {
-              const rem = areaQueue.filter(id => !guessed.includes(id) && id !== currentPoint.id);
-              if (rem.length) targetPoint = activePointsData.find(p => p.id === rem[Math.floor(Math.random() * rem.length)]);
-          } else {
-              const idx = areaQueue.indexOf(currentPoint.id);
-              const newIdx = direction === 'next' ? idx + 1 : idx - 1;
-              if (newIdx >= 0 && newIdx < areaQueue.length) {
-                  targetPoint = activePointsData.find(p => p.id === areaQueue[newIdx]);
-              }
+          const idx = areaQueue.indexOf(currentPoint.id);
+          const newIdx = direction === 'next' ? idx + 1 : idx - 1;
+          if (newIdx >= 0 && newIdx < areaQueue.length) {
+              targetPoint = activePointsData.find(p => p.id === areaQueue[newIdx]);
           }
       } else {
           const idx = sortedPoints.findIndex(p => p.id === currentPoint.id);
@@ -514,26 +502,10 @@ export default function App() {
 
       if (areaMode && areaQueue.length) {
         let nextPoint = null;
-        if (randomAreaSequence) {
-            const rem = areaQueue.filter(id => !updated.includes(id));
-            if (rem.length) {
-                const normalRem = rem.filter(id => {
-                    const pt = activePointsData.find(p => p.id === id);
-                    return pt && pt.type !== 'reference';
-                });
-                
-                if (normalRem.length > 0) {
-                     nextPoint = activePointsData.find(p => p.id === normalRem[Math.floor(Math.random() * normalRem.length)]);
-                } else {
-                     nextPoint = activePointsData.find(p => p.id === rem[0]);
-                }
-            }
-        } else {
-            const idx = areaQueue.indexOf(currentPoint.id);
-            const nextIdx = idx + 1;
-            if (nextIdx < areaQueue.length) {
-                nextPoint = activePointsData.find(p => p.id === areaQueue[nextIdx]); 
-            }
+        const idx = areaQueue.indexOf(currentPoint.id);
+        const nextIdx = idx + 1;
+        if (nextIdx < areaQueue.length) {
+            nextPoint = activePointsData.find(p => p.id === areaQueue[nextIdx]); 
         }
 
         if (nextPoint) {
@@ -547,12 +519,15 @@ export default function App() {
              setAreaQueue(nextIds);
              
              if (nextIds.length) {
-                 const firstPoint = activePointsData.find(p => p.id === (randomAreaSequence ? nextIds.filter(id => !updated.includes(id))[0] || nextIds[0] : nextIds[0]));
+                 const firstPoint = activePointsData.find(p => p.id === nextIds[0]);
                  setCurrentPoint(firstPoint || null); setAnswer(''); if (map.current && firstPoint) map.current.flyTo({ center: firstPoint.coords });
              } else { handleCompletion(); setCurrentPoint(null); }
         }
       } else if (randomMode) {
-        const rem = activePointsData.filter(p => !updated.includes(p.id) && p.type !== 'reference'); 
+        let rem = activePointsData.filter(p => !updated.includes(p.id) && p.type !== 'reference'); 
+        if (rem.length === 0) {
+            rem = activePointsData.filter(p => !updated.includes(p.id) && p.type === 'reference');
+        }
         const next = rem.length ? rem[Math.floor(Math.random() * rem.length)] : null;
         if (next) { setCurrentPoint(next); setAnswer(''); if (map.current) map.current.flyTo({ center: next.coords }); }
         else { handleCompletion(); setCurrentPoint(null); setAnswer(''); }
@@ -579,10 +554,10 @@ export default function App() {
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPoint, areaMode, randomAreaSequence, areaQueue, showKey, activePointsData]);
+  }, [currentPoint, areaMode, areaQueue, showKey, activePointsData]);
 
-  const missingPoints = activePointsData.filter(p => !guessed.includes(p.id) && p.type !== 'reference').sort((a,b)=>a.name.localeCompare(b.name));
-  const answeredPoints = activePointsData.filter(p => guessed.includes(p.id) && p.type !== 'reference').sort((a,b)=>a.name.localeCompare(b.name));
+  // Lista de pontos para o Dropdown (Apenas os já respondidos)
+  const answeredPoints = activePointsData.filter(p => guessed.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
 
   if (!selectedSquadron) {
     return (
@@ -596,6 +571,25 @@ export default function App() {
 
   return (
     <div className="app-container">
+      <style>{`
+        .custom-dropdown {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #90caf9;
+            background-color: #e3f2fd;
+            color: #1565c0;
+            font-weight: bold;
+            outline: none;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .custom-dropdown:hover {
+            background-color: #bbdefb;
+            border-color: #42a5f5;
+        }
+      `}</style>
       {mapError && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', textAlign: 'center', padding: '20px' }}>
           <div style={{ background: '#333', padding: '30px', borderRadius: '12px', maxWidth: '400px' }}>
@@ -613,6 +607,7 @@ export default function App() {
           </div>
       )}
 
+      {/* TELA DE INTRODUÇÃO E IMAGENS */}
       {showIntro && !mapError && (
         <div style={{ position: 'absolute', inset: 0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center' }}>
           <div style={{ background:'white', padding:'30px 20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
@@ -625,7 +620,7 @@ export default function App() {
             </div>
             
             <div style={{ fontSize: '14px', fontStyle: 'italic', textAlign: 'center', margin: '20px 0', color: '#555' }}>
-               "Mil cairão ao teu lado, e dez mil à tua direita..."
+               "O Senhor é meu pastor; nada me faltará." - Salmo 23:1
             </div>
 
             <div style={{ display:'flex', justifyContent:'space-between', marginTop: '30px' }}>
@@ -732,9 +727,9 @@ export default function App() {
             <div onClick={() => randomMode ? startManualMode() : startRandomMode()} className={`toggle-btn ${randomMode ? 'active' : 'inactive'}`}><b>Aleatório</b></div>
             <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink: 0 }}>
                 <div onClick={() => areaMode ? startManualMode() : startAreaMode()} className={`toggle-btn ${areaMode ? 'active' : 'inactive'}`}><b>Áreas</b></div>
-                {areaMode && <label style={{ display:'flex', alignItems:'center', gap:4, fontSize: 12, cursor:'pointer' }}><input type="checkbox" checked={randomAreaSequence} onChange={(e) => setRandomAreaSequence(e.target.checked)} />Seq. Aleatória</label>}
                 
                 <select 
+                    className="custom-dropdown"
                     value={selectedArea} 
                     onChange={(e)=> {
                         const newArea = e.target.value;
@@ -745,13 +740,7 @@ export default function App() {
 
                         if (areaMode) {
                             if (newQueue.length > 0) {
-                                let startP;
-                                if (randomAreaSequence) {
-                                    const un = newQueue.filter(id => !guessed.includes(id));
-                                    startP = activePointsData.find(pt => pt.id === (un.length > 0 ? un[0] : newQueue[0]));
-                                } else {
-                                    startP = activePointsData.find(pt => pt.id === newQueue[0]);
-                                }
+                                let startP = activePointsData.find(pt => pt.id === newQueue[0]);
                                 if (startP) {
                                     setCurrentPoint(startP);
                                     setAnswer('');
@@ -761,11 +750,11 @@ export default function App() {
                             }
                         }
                     }} 
-                    style={{ padding:'6px', borderRadius:4, maxWidth: '120px' }}>
+                    style={{ maxWidth: '140px' }}>
                     {areaList.map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
             </div>
-            <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, cursor:'pointer', borderLeft: '1px solid #ddd', paddingLeft: 10 }}><input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} /><b>Às Cegas</b></label>
+            <label style={{ display:'flex', alignItems:'center', gap:4, marginLeft: 10, cursor:'pointer', borderLeft: '1px solid #ddd', paddingLeft: 10 }}><input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} /><b>Ocultar indicadores</b></label>
             <button onClick={() => setHintTrigger(p => p + 1)} style={{ opacity: blindMode ? 1 : 0, pointerEvents: blindMode ? 'auto' : 'none', padding: '6px 12px', borderRadius: 4, border: '1px solid #2196f3', backgroundColor: '#e3f2fd', color: '#1976d2', cursor: 'pointer', fontWeight: 'bold', fontSize: 12 }}>Dica</button>
             
             <div style={{ display:'flex', alignItems: 'center', border: '1px solid #ffcc80', borderRadius: 6, overflow: 'hidden', height: '28px', backgroundColor: 'white' }}>
@@ -779,27 +768,20 @@ export default function App() {
 
             <button onClick={resetGame} style={{ padding:'6px 10px', borderRadius:4, border:'none', background:'#f44336', color:'white', marginLeft: 'auto' }}>Recomeçar</button>
             <div style={{ minWidth:180, marginLeft: 10 }}>
-              <select style={{ width:'100%', padding:6, borderRadius:4 }} onChange={(e)=>{ const pt=activePointsData.find(p=>p.id===Number(e.target.value) || p.id===e.target.value); if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); }} value="">
-                <option value="">-- Ir para ponto --</option>
-                {!areaMode ? (
-                  <>
-                    {missingPoints.length > 0 && <optgroup label="Faltantes">{missingPoints.map(pt => <option key={pt.id} value={pt.id}>{pt.name}</option>)}</optgroup>}
-                    {answeredPoints.length > 0 && <optgroup label="Respondidos">{answeredPoints.map(pt => <option key={pt.id} value={pt.id}>{pt.name} ✅</option>)}</optgroup>}
-                  </>
-                ) : (
-                  <>
-                    {Object.entries(activeAreas).map(([areaName, areaPointsNames]) => {
-                        const areaPointsIds = areaPointsNames.map(n => nameToPointId(n)).filter(Boolean);
-                        const areaMissing = areaPointsIds.filter(id => !guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a)?.name.localeCompare(activePointsData.find(p=>p.id===b)?.name));
-                        const areaGuessed = areaPointsIds.filter(id => guessed.includes(id)).sort((a,b) => activePointsData.find(p=>p.id===a)?.name.localeCompare(activePointsData.find(p=>p.id===b)?.name));
-                        return (
-                            <optgroup key={areaName} label={areaName}>
-                                {areaMissing.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id)?.name}</option>)}
-                                {areaGuessed.map(id => <option key={id} value={id}>{activePointsData.find(p => p.id === id)?.name} ✅</option>)}
-                            </optgroup>
-                        );
-                    })}
-                  </>
+              <select 
+                className="custom-dropdown" 
+                onChange={(e)=>{ 
+                    const pt=activePointsData.find(p=>p.id===String(e.target.value) || p.id===Number(e.target.value)); 
+                    if(pt && map.current) map.current.flyTo({ center:pt.coords, zoom:16 }); 
+                    e.target.value = ""; // Reseta o visual do select após usar
+                }} 
+                value=""
+              >
+                <option value="" disabled>-- Ponto visitado --</option>
+                {answeredPoints.length > 0 && (
+                    <optgroup label="Respondidos">
+                        {answeredPoints.map(pt => <option key={pt.id} value={pt.id}>{pt.name} ✅</option>)}
+                    </optgroup>
                 )}
               </select>
             </div>
