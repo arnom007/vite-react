@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import { pointsData } from "./points"; 
-import { points2EIA, AREAS_2EIA, LIMITS_2EIA_GEOJSON } from "./points2EIA";
+import { points2EIA, AREAS_2EIA, AREA_LIMITS_2EIA } from "./points2EIA";
 import './App.css';
 
 const API_KEYS = ["YHlTRP429Wo5PZXGJklr", "YS0YNd7SKoqGfXhdY8Bx", "R13imFP2SenJH9JsgVkN"];
@@ -229,12 +229,8 @@ export default function App() {
     // LÓGICA DO POLÍGONO DO PORTAL
     const sourcePortal = map.current.getSource('source-portal');
     if (sourcePortal) {
-        // Nomes dos pontos necessários para desbloquear a área
         const reqNames = ['Venda Branca', 'Ponte sobre o Rio Jaguari Mirim', 'Trevo da estrada de Aguaí', 'Vírgula', 'Areal'];
-        // Busca os IDs reais baseados nos nomes
         const portalReqIds = reqNames.map(name => nameToPointId(name)).filter(Boolean);
-        
-        // Verifica se todos foram encontrados e se todos estão na lista "guessed" (adivinhados)
         const showPortal = portalReqIds.length === 5 && portalReqIds.every(id => guessed.includes(id));
         
         if (showPortal) {
@@ -303,20 +299,13 @@ export default function App() {
             'paint': { 'line-color': '#007cf5', 'line-width': 2 }
           });
 
-          // Camadas extras do 1EIA e 2EIA
+          // Camada extra do 1EIA
           if (selectedSquadron === '1EIA') {
               map.current.addSource('source-extra-red', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
               map.current.addLayer({
                 'id': 'layer-extra-red', 'type': 'line', 'source': 'source-extra-red',
                 'layout': { 'line-join': 'round', 'line-cap': 'round' },
                 'paint': { 'line-color': '#f44336', 'line-width': 3, 'line-opacity': 0.6 }
-              });
-          } else if (selectedSquadron === '2EIA') {
-              map.current.addSource('source-2eia-limits', { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
-              map.current.addLayer({
-                'id': 'layer-2eia-limits', 'type': 'line', 'source': 'source-2eia-limits',
-                'layout': { 'line-join': 'round', 'line-cap': 'round' },
-                'paint': { 'line-color': '#d32f2f', 'line-width': 3, 'line-opacity': 0.8 }
               });
           }
 
@@ -380,7 +369,7 @@ export default function App() {
       if (map.current) map.current.remove();
       map.current = null;
     };
-  }, [currentKeyIndex, activeKey, selectedSquadron, activePointsData]);
+  }, [currentKeyIndex, activeKey, selectedSquadron, activePointsData, activeAreaLimits]);
 
   // Atualização Visual Dinâmica dos Pontos
   useEffect(() => {
@@ -677,7 +666,6 @@ export default function App() {
           <div className="compass-container" style={{ minWidth: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' }}>
             <div className="compass-circle" style={{ width: 60, height: 60, border: '2px solid rgba(0,0,0,0.2)', background: 'rgba(255,255,255,0.9)', borderRadius: '50%', position: 'relative', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}>
               
-              {/* Lubber Line - Linha Laranja Fixa no Topo */}
               <div style={{ position: 'absolute', top: -2, left: 'calc(50% - 2px)', width: 4, height: 8, background: '#ff9800', zIndex: 10, borderRadius: 2 }} />
               
               <div ref={compassPointerRef} style={{ position: 'absolute', inset: 0, zIndex: 2, transform: 'rotate(-130deg)', transformOrigin: 'center center', transition: 'transform 0.1s ease-out' }}>
