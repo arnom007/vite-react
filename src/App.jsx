@@ -93,6 +93,7 @@ export default function App() {
   
   const [randomMode, setRandomMode] = useState(false);
   const [areaMode, setAreaMode] = useState(false);
+  const [randomAreaSequence, setRandomAreaSequence] = useState(false);
   const [blindMode, setBlindMode] = useState(false);
   const [showTerrain, setShowTerrain] = useState(false);
   const [boundaryMode, setBoundaryMode] = useState('progressive'); 
@@ -183,6 +184,7 @@ export default function App() {
     return () => clearInterval(id); 
   }, [startTime, selectedSquadron, showIntro]);
 
+  // Atualização Universal de Limites Geográficos e Portal
   useEffect(() => {
     if (!isMapLoaded || !map.current || !selectedSquadron) return;
 
@@ -209,6 +211,7 @@ export default function App() {
         source.setData({ 'type': 'FeatureCollection', 'features': features });
     });
 
+    // Linha vermelha extra do 1EIA
     if (selectedSquadron === '1EIA') {
         const extraSource = map.current.getSource('source-extra-red');
         if (extraSource) {
@@ -222,6 +225,7 @@ export default function App() {
         }
     }
 
+    // LÓGICA DO POLÍGONO DO PORTAL
     const sourcePortal = map.current.getSource('source-portal');
     if (sourcePortal) {
         const reqNames = ['Venda Branca', 'Ponte sobre o Rio Jaguari Mirim', 'Trevo da estrada de Aguaí', 'Vírgula', 'Areal'];
@@ -259,7 +263,7 @@ export default function App() {
           zoom: 8.5,
           pitch: 60,
           bearing: 130 - MAP_DECLINATION,
-          maxPitch: 65, // OTIMIZAÇÃO: Reduzido de 70 para 65. Corta a renderização excessiva do horizonte para salvar os FPS no modo Relevo.
+          maxPitch: 65, 
         });
 
         map.current.on('error', (e) => {
@@ -270,7 +274,6 @@ export default function App() {
         });
 
         map.current.on('load', () => {
-          // OTIMIZAÇÃO VITAL DO TERRENO: maxzoom: 12 evita carregar polígonos de alta resolução desnecessários.
           map.current.addSource('terrain', { 
             "type": "raster-dem", 
             "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${activeKey}`, 
@@ -542,7 +545,8 @@ export default function App() {
   };
 
   const checkAnswer = () => {
-    if (currentPoint && currentPoint.type === 'reference') {
+    // Agora verifica tanto se é referência OU se já foi adivinhado antes para apenas prosseguir
+    if (currentPoint && (currentPoint.type === 'reference' || guessed.includes(currentPoint.id))) {
        processCorrectAnswer();
        return;
     }
@@ -555,13 +559,26 @@ export default function App() {
 
   useEffect(() => {
       const handleKeyDown = (e) => {
-          if (e.key === 'ArrowRight') moveToPoint('next');
+          if (e.key === 'ArrowRight') {
+              // Se já está adivinhado ou é referência, a seta avança executando a transição completa (processCorrectAnswer)
+              if (currentPoint && (currentPoint.type === 'reference' || guessed.includes(currentPoint.id))) {
+                  checkAnswer();
+              } else {
+                  moveToPoint('next');
+              }
+          }
           else if (e.key === 'ArrowLeft') moveToPoint('prev');
           else if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); revealAll(!showKey); }
+          else if (e.key === 'Enter' && document.activeElement.tagName !== 'INPUT') {
+              // Enter global (quando input está escondido) avança o ponto
+              if (currentPoint && (currentPoint.type === 'reference' || guessed.includes(currentPoint.id))) {
+                  checkAnswer();
+              }
+          }
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPoint, areaMode, areaQueue, showKey, activePointsData]);
+  }, [currentPoint, areaMode, areaQueue, showKey, activePointsData, guessed, answer, selectedArea]);
 
   const answeredPoints = activePointsData.filter(p => guessed.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
 
@@ -619,7 +636,7 @@ export default function App() {
           <div style={{ background:'white', padding:'30px 20px', borderRadius:'10px', width: '90%', maxWidth:'460px', textAlign:'left', lineHeight:1.4 }}>
             <h3 style={{ marginTop: 0, textAlign: 'center' }}>Atalhos do Jogo:</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', alignItems: 'center', marginBottom: 20 }}>
-                <b>Enter</b><span>Confirmar</span>
+                <b>Enter</b><span>Confirmar / Avançar rápido</span>
                 <b>➜</b><span>Próximo</span>
                 <b>⬅</b><span>Anterior</span>
                 <b>Ctrl + Espaço</b><span>Gabarito</span>
@@ -702,20 +719,21 @@ export default function App() {
           </div>
 
           {currentPoint && (
-            <div className="quiz-panel" style={{ backgroundColor: currentPoint.type === 'reference' ? '#fff9c4' : 'white' }}>
+            <div className="quiz-panel" style={{ backgroundColor: currentPoint.type === 'reference' ? '#fff9c4' : (guessed.includes(currentPoint.id) ? '#e8f5e9' : 'white') }}>
               <div style={{ fontSize: '11px', color: '#666', fontStyle: 'italic', fontWeight: 'bold' }}>{currentPoint.info || "Ponto Isolado"}</div>
               
-              {currentPoint.type === 'reference' ? (
+              {/* Lógica Unificada: Se for referência OU já estiver respondido, mostra o layout de avançar */}
+              {(currentPoint.type === 'reference' || guessed.includes(currentPoint.id)) ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1976d2', borderBottom: '2px solid #bbdefb', paddingBottom: '4px' }}>
-                        {currentPoint.name}
+                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: currentPoint.type === 'reference' ? '#1976d2' : '#2e7d32', borderBottom: currentPoint.type === 'reference' ? '2px solid #bbdefb' : '2px solid #a5d6a7', paddingBottom: '4px' }}>
+                        {currentPoint.name} {guessed.includes(currentPoint.id) && currentPoint.type !== 'reference' ? '✅' : ''}
                     </div>
                     {currentPoint.description && (
                         <div style={{ fontSize: '13px', color: '#333', lineHeight: '1.4' }}>
                             {currentPoint.description}
                         </div>
                     )}
-                    <button onClick={checkAnswer} style={{ padding:'8px 12px', marginTop: '4px', borderRadius:4, backgroundColor:'#1976d2', color:'white', border:'none', cursor:'pointer', fontWeight: 'bold' }}>Entendido / Próximo ➜</button>
+                    <button onClick={checkAnswer} style={{ padding:'8px 12px', marginTop: '4px', borderRadius:4, backgroundColor: currentPoint.type === 'reference' ? '#1976d2' : '#4caf50', color:'white', border:'none', cursor:'pointer', fontWeight: 'bold' }}>Próximo ➜</button>
                 </div>
               ) : (
                 <>
