@@ -245,6 +245,7 @@ export default function App() {
     }
   }, [isMapLoaded, guessed, boundaryMode, nameToPointId, selectedSquadron, activePointsData, activeAreaLimits]);
 
+  // Inicialização do Mapa
   useEffect(() => {
     if (mapError || !selectedSquadron) return; 
     if (map.current) { map.current.remove(); map.current = null; setIsMapLoaded(false); }
@@ -258,7 +259,7 @@ export default function App() {
           zoom: 8.5,
           pitch: 60,
           bearing: 130 - MAP_DECLINATION,
-          maxPitch: 70, // Reduzido para evitar lag crítico com terreno 3D
+          maxPitch: 65, // OTIMIZAÇÃO: Reduzido de 70 para 65. Corta a renderização excessiva do horizonte para salvar os FPS no modo Relevo.
         });
 
         map.current.on('error', (e) => {
@@ -269,7 +270,13 @@ export default function App() {
         });
 
         map.current.on('load', () => {
-          map.current.addSource('terrain', { "type": "raster-dem", "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${activeKey}`, "tileSize": 512 });
+          // OTIMIZAÇÃO VITAL DO TERRENO: maxzoom: 12 evita carregar polígonos de alta resolução desnecessários.
+          map.current.addSource('terrain', { 
+            "type": "raster-dem", 
+            "url": `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${activeKey}`, 
+            "tileSize": 512,
+            "maxzoom": 12 
+          });
 
           Object.keys(activeAreaLimits).forEach(areaName => {
               map.current.addSource(`source-${areaName}`, { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } });
@@ -302,7 +309,6 @@ export default function App() {
           activePointsData.forEach(point => {
             const el = document.createElement('div');
             el.className = 'marker-root';
-            // will-change otimiza a performance de marcadores do DOM
             el.style.cssText = 'width:0px;height:0px;display:flex;align-items:center;justify-content:center;overflow:visible;will-change:transform;';
             
             const content = document.createElement('div');
@@ -362,6 +368,7 @@ export default function App() {
     };
   }, [currentKeyIndex, activeKey, selectedSquadron, activePointsData, activeAreaLimits]);
 
+  // Atualização Visual Dinâmica dos Pontos
   useEffect(() => {
     if (!isMapLoaded) return;
     markersRef.current.forEach((rec, id) => {
@@ -556,7 +563,6 @@ export default function App() {
       return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPoint, areaMode, areaQueue, showKey, activePointsData]);
 
-  // Lista de pontos para o Dropdown (Apenas os já respondidos)
   const answeredPoints = activePointsData.filter(p => guessed.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name));
 
   if (!selectedSquadron) {
