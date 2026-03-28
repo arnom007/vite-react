@@ -72,7 +72,7 @@ export const points2EIA = [
 
   // --- GÊMEOS PONTOS E PISTAS ---
   { id: '2eia_53', name: 'Chifre 2200', aliases: ['chifre 2200', 'chifre'], coords: [-47.130581, -22.149233], info: 'Pista da área de Gêmeos' },
-  { id: '2eia_54', name: 'Pista Monte Cristo 2200', aliases: ['pista monte cristo 2200', 'monte cristo 2200'], coords: [-47.053631, -22.244897], info: 'Pista da área de Gêmeos' },
+  { id: '2eia_54', name: 'Pista Monte Cristo 2200', aliases: ['pista monte cristo 2200', 'monte cristo 2200'], coords: [22.244897, -47.053631], info: 'Pista da área de Gêmeos' },
   { id: '2eia_55', name: 'Oriçanga 2300', aliases: ['oricanga 2300', 'oricanga'], coords: [-47.053631, -22.244897], info: 'Pista da área de Gêmeos', description: 'NÃO USADA EM 2026' },
   { id: '2eia_56', name: 'Fazenda Retiro 2000', aliases: ['fazenda retiro 2000', 'fazenda retiro'], coords: [-47.231825, -22.087489], info: 'Pista da área de Gêmeos' },
   { id: '2eia_57', name: 'Usina Cresciumal 2000', aliases: ['usina cresciumal 2000', 'usina cresciumal'], coords: [-47.278314, -22.148347], info: 'Pista da área de Gêmeos' },
