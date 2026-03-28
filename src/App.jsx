@@ -4,7 +4,13 @@ import { pointsData } from "./points";
 import { points2EIA, AREAS_2EIA, AREA_LIMITS_2EIA } from "./points2EIA";
 import './App.css';
 
-const API_KEYS = ["YHlTRP429Wo5PZXGJklr", "YS0YNd7SKoqGfXhdY8Bx", "R13imFP2SenJH9JsgVkN"];
+const API_KEYS = [
+  "YHlTRP429Wo5PZXGJklr", 
+  "YS0YNd7SKoqGfXhdY8Bx", 
+  "R13imFP2SenJH9JsgVkN",
+  "jYeEOC7quLY6dAyW2Jra",
+  "eHlYxk9iV7qFKh0zwBdB"
+];
 const INITIAL_CENTER = [-47.6, -22.0];
 const MAP_DECLINATION = 20;
 
