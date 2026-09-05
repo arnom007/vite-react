@@ -30,9 +30,9 @@ export const pointsData = [
   { id: 29, name: 'Santa Rita do Passa Quatro', aliases: ['santa rita do passa quatro'], coords: [-47.4803, -21.7086], info: 'Limite da área de Taurus 📍' },
   { id: 30, name: 'Porto Ferreira', aliases: ['porto ferreira'], coords: [-47.4833, -21.8570], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Taurus 📍 | Limite da área de Tobogã 📍 | Ponto de Ligação Alta' },
   { id: 31, name: 'Leme', aliases: ['leme'], coords: [-47.3847, -22.1811], info: 'Limite da área de Capricórnio 📍' },
-  { id: 32, name: 'Brotas', aliases: ['brotas'], coords: [-48.1275, -22.2817], info: 'Limite da área de Capricórnio W 📍 | Limite da área de Aquárius W 📍' },
-  { id: 33, name: 'Iracemópolis', aliases: ['iracemopolis'], coords: [-47.5136, -22.5872], info: 'Limite da área de Capricórnio W 📍' },
-  { id: 34, name: 'Cordeirópolis', aliases: ['cordeiropolis'], coords: [-47.4578, -22.4822], info: 'Limite da área de Capricórnio 📍 | Limite da área de Capricórnio W 📍' },
+  { id: 32, name: 'Brotas', aliases: ['brotas'], coords: [-48.125342, -22.286319], info: 'Limite da área de Capricórnio W 📍 | Limite da área de Aquárius W 📍' },
+  { id: 33, name: 'Iracemápolis', aliases: ['iracemapolis', 'iracomapolis', 'iracemopolis'], coords: [-47.519900, -22.587406], info: 'Limite da área de Capricórnio W 📍' },
+  { id: 34, name: 'Cordeirópolis', aliases: ['cordeiropolis'], coords: [-47.457936, -22.482442], info: 'Limite da área de Capricórnio 📍 | Limite da área de Capricórnio W 📍' },
   { id: 35, name: 'Rio Claro', aliases: ['rio claro'], coords: [-47.5636, -22.4042], info: 'Ponto da área de Capricornio' },
   { id: 36, name: 'Araras', aliases: ['araras'], coords: [-47.3811, -22.3647], info: 'Limite da área de Capricórnio 📍' },
   { id: 37, name: 'Santa Cruz da Conceição', aliases: ['santa cruz da conceicao'], coords: [-47.4517, -22.1378], info: 'Ponto da área de Capricornio' },
@@ -42,7 +42,7 @@ export const pointsData = [
   { id: 41, name: 'Araraquara', aliases: ['araraquara'], coords: [-48.1670, -21.7894], info: 'Limite da área de Aquárius W 📍 | Limite da área de Peixes W 📍' },
   { id: 42, name: 'São Carlos', aliases: ['sao carlos'], coords: [-47.8903, -22.0164], info: 'Ponto da área de Aquarius' },
   { id: 43, name: 'Ibaté', aliases: ['ibate'], coords: [-47.9983, -21.9511], info: 'Ponto da área de Aquarius' },
-  { id: 44, name: 'Ipeúna', aliases: ['ipeuna'], coords: [-47.7114, -22.4331], info: 'Limite da área de Capricórnio 📍 | Limite da área de Capricórnio W 📍' },
+  { id: 44, name: 'Ipeúna', aliases: ['ipeuna'], coords: [-47.711525, -22.433264], info: 'Limite da área de Capricórnio 📍 | Limite da área de Capricórnio W 📍' },
   { id: 45, name: 'Morro da Antena', aliases: ['morro da antena'], coords: [-47.4836, -22.0042], info: 'Ponto da área de Tráfego AFA' },
   { id: 46, name: 'Ponta W Vila SGT', aliases: ['ponta w vila sgt'], coords: [-47.3697, -21.9906], info: 'Ponto da área de Tráfego AFA' },
   { id: 47, name: 'Ponte Velha', aliases: ['ponte velha'], coords: [-47.3683, -21.9261], info: 'Ponto da área de Tráfego AFA' },
@@ -73,5 +73,20 @@ export const pointsData = [
   // --- PONTOS DE REFERÊNCIA (EXEMPLOS) ---
   // type: 'reference' garante que não peçam resposta digitada.
   // description: o texto que vai ajudar na orientação visual.
-  
+  { 
+    id: 100, 
+    name: 'Ref: Pedreira Abandonada', 
+    type: 'reference', // IMPORTANTÍSSIMO!
+    coords: [-47.4100, -22.3000], 
+    info: 'Referência Visual Capricornio 👁️',
+    description: 'Se você estiver sobre esta pedreira, a cidade de Leme estará a 15 milhas no rumo Norte (N).'
+  },
+  { 
+    id: 101, 
+    name: 'Ref: Represa em Y', 
+    type: 'reference', 
+    coords: [-47.6000, -22.1800], 
+    info: 'Referência Visual Capricornio 👁️',
+    description: 'A base do Y aponta diretamente para o pico de Analândia. Ideal para reorientação rápida.'
+  }
 ];
