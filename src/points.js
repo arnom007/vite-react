@@ -73,20 +73,5 @@ export const pointsData = [
   // --- PONTOS DE REFERÊNCIA (EXEMPLOS) ---
   // type: 'reference' garante que não peçam resposta digitada.
   // description: o texto que vai ajudar na orientação visual.
-  { 
-    id: 100, 
-    name: 'Ref: Pedreira Abandonada', 
-    type: 'reference', // IMPORTANTÍSSIMO!
-    coords: [-47.4100, -22.3000], 
-    info: 'Referência Visual Capricornio 👁️',
-    description: 'Se você estiver sobre esta pedreira, a cidade de Leme estará a 15 milhas no rumo Norte (N).'
-  },
-  { 
-    id: 101, 
-    name: 'Ref: Represa em Y', 
-    type: 'reference', 
-    coords: [-47.6000, -22.1800], 
-    info: 'Referência Visual Capricornio 👁️',
-    description: 'A base do Y aponta diretamente para o pico de Analândia. Ideal para reorientação rápida.'
-  }
+  
 ];
