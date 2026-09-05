@@ -25,10 +25,10 @@ export const pointsData = [
   { id: 24, name: 'Matão', aliases: ['matao'], coords: [-48.3636, -21.5967], info: 'Limite da área de Aquárius W 📍 | Limite da área de Peixes W 📍' },
   { id: 25, name: 'Cravinhos', aliases: ['cravinhos'], coords: [-47.7278, -21.3286], info: 'Ponto Isolado' },
   { id: 26, name: 'Cajuru', aliases: ['cajuru'], coords: [-47.3058, -21.2731], info: 'Ponto Isolado' },
-  { id: 27, name: 'Mococa', aliases: ['mococa'], coords: [-47.0003, -21.4756], info: 'Limite da área de Taurus 📍 | Limite da área de Libra Alta 📍' },
-  { id: 28, name: 'Santa Rosa do Viterbo', aliases: ['santa rosa do viterbo'], coords: [-47.3661, -21.5010], info: 'Limite da área de Taurus 📍 | Limite da área de Libra Alta 📍' },
+  { id: 27, name: 'Mococa', aliases: ['mococa'], coords: [-47.0003, -21.4756], info: 'Limite da área de Taurus 📍' },
+  { id: 28, name: 'Santa Rosa do Viterbo', aliases: ['santa rosa do viterbo'], coords: [-47.3661, -21.5010], info: 'Limite da área de Taurus 📍' },
   { id: 29, name: 'Santa Rita do Passa Quatro', aliases: ['santa rita do passa quatro'], coords: [-47.4803, -21.7086], info: 'Limite da área de Taurus 📍' },
-  { id: 30, name: 'Porto Ferreira', aliases: ['porto ferreira'], coords: [-47.4833, -21.8570], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Taurus 📍 | Limite da área de Tobogã 📍 | Ponto de Ligação Alta' },
+  { id: 30, name: 'Porto Ferreira', aliases: ['porto ferreira'], coords: [-47.4833, -21.8570], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Taurus 📍 | Limite da área de Tobogã 📍' },
   { id: 31, name: 'Leme', aliases: ['leme'], coords: [-47.3847, -22.1811], info: 'Limite da área de Capricórnio 📍' },
   { id: 32, name: 'Brotas', aliases: ['brotas'], coords: [-48.125342, -22.286319], info: 'Limite da área de Capricórnio W 📍 | Limite da área de Aquárius W 📍' },
   { id: 33, name: 'Iracemápolis', aliases: ['iracemapolis', 'iracomapolis', 'iracemopolis'], coords: [-47.519900, -22.587406], info: 'Limite da área de Capricórnio W 📍' },
@@ -59,16 +59,7 @@ export const pointsData = [
   { id: 59, name: 'São Simão', aliases: ['sao simao'], coords: [-47.5556, -21.4794], info: 'Ponto da área de Taurus' },
   { id: 60, name: 'Sumidouro', aliases: ['sumidouro'], coords: [-47.3467, -21.9636], info: 'Ponto da área de Tráfego AFA' },
   { id: 61, name: 'Estrada SO/SGT', aliases: ['estrada so sgt'], coords: [-47.3447, -22.0067], info: 'Ponto da área de Tráfego AFA' },
-  { id: 62, name: 'Descalvado', aliases: ['descalvado'], coords: [-47.6258, -21.9117], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Tobogã 📍' },
-  { id: 63, name: 'Santa Cruz das Palmeiras', aliases: ['santa cruz das palmeiras'], coords: [-47.2481, -21.8258], info: 'Limite da área de Libra Alta 📍 | Limite da área de Virgem Alta 📍' },
-  { id: 64, name: 'Tambaú', aliases: ['tambau'], coords: [-47.2717, -21.7056], info: 'Limite da área de Libra Alta 📍' },
-  { id: 65, name: 'São Sebastião da Grama', aliases: ['sao sebastiao da grama'], coords: [-46.8272, -21.7108], info: 'Limite da área de Libra Alta 📍 | Limite da área de Virgem Alta 📍' },
-  { id: 66, name: 'Casa Branca', aliases: ['casa branca'], coords: [-47.0822, -21.7781], info: 'Limite da área de Libra Alta 📍 | Limite da área de Virgem Alta 📍 | Limite da área de Gêmeos Alta 📍' },
-  { id: 67, name: 'São João da Boa Vista', aliases: ['sao joao da boa vista'], coords: [-46.7872, -21.9786], info: 'Limite da área de Virgem Alta 📍 | Limite da área de Gêmeos Alta 📍' },
-  { id: 68, name: 'Aguaí', aliases: ['aguai'], coords: [-46.9792, -22.0636], info: 'Limite da área de Virgem Alta 📍' },
-  { id: 69, name: 'Ponte na Aguaí sobre Rio Mogi', aliases: ['ponte na aguai sobre rio mogi'], coords: [-47.2992, -22.0072], info: 'Limite da área de Virgem Alta 📍 | Limite da área de Gêmeos Alta 📍' },
-  { id: 70, name: 'Mogi-guaçu', aliases: ['mogi-guacu', 'mogi guacu'], coords: [-46.9383, -22.3656], info: 'Limite da área de Gêmeos Alta 📍' },
-  { id: 71, name: 'Conchal', aliases: ['conchal'], coords: [-47.1694, -22.3378], info: 'Limite da área de Gêmeos Alta 📍' },
+  { id: 62, name: 'Descalvado', aliases: ['descalvado'], coords: [-47.6258, -21.9117], info: 'Limite da área de Aquárius 📍 | Limite da área de Peixes 📍 | Limite da área de Tobogã 📍' }
 
   // --- PONTOS DE REFERÊNCIA (EXEMPLOS) ---
   // type: 'reference' garante que não peçam resposta digitada.
